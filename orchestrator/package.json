@@ -1,0 +1,25 @@
+{
+  "name": "team1-orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "runtime",
+    "agent-registry",
+    "orchestrator-api"
+  ],
+  "scripts": {
+    "dev": "bun --filter '*' dev",
+    "build": "bun --filter '*' build",
+    "test": "bun --filter '*' test",
+    "boot:bus": "docker compose -f infra/docker-compose.yml up -d redis",
+    "boot:services": "bun --filter './services/*' dev",
+    "lint": "bun --filter '*' lint"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}

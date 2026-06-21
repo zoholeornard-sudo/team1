@@ -1,0 +1,12 @@
+{
+  "name": "@orchestrator/event-coordination",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "test": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "@orchestrator/contracts": "workspace:*"
+  }
+}

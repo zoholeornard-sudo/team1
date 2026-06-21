@@ -1,0 +1,102 @@
+{
+  "name": "team1-agent-skills",
+  "version": "1.1.0",
+  "description": "Agentic AI skill definitions for team1 Platform departments and agents under MBO framework",
+  "platform": "team1 Platform",
+  "author": {
+    "name": "TeamElite",
+    "department": "SaaS Development Unit"
+  },
+  "departments": [
+    {
+      "name": "SaaS Development Unit",
+      "aiManager": "SaaS Delivery Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "SaaS Development Unit"
+      },
+      "agentCount": 8
+    },
+    {
+      "name": "Mobile Development Unit",
+      "aiManager": "Mobile Platform Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "Mobile Development Unit"
+      },
+      "agentCount": 7
+    },
+    {
+      "name": "Web Development Unit",
+      "aiManager": "Web Delivery Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "Web Development Unit"
+      },
+      "agentCount": 8
+    },
+    {
+      "name": "Desktop Development Unit",
+      "aiManager": "Desktop Solutions Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "Desktop Development Unit"
+      },
+      "agentCount": 7
+    },
+    {
+      "name": "Cloud Infrastructure Unit",
+      "aiManager": "Cloud Operations Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "Cloud Infrastructure Unit"
+      },
+      "agentCount": 6
+    },
+    {
+      "name": "ML/Ops Unit",
+      "aiManager": "MLOps Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "ML/Ops Unit"
+      },
+      "agentCount": 6
+    },
+    {
+      "name": "AI Research Unit",
+      "aiManager": "Research & Innovation Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "AI Research Unit"
+      },
+      "agentCount": 5
+    },
+    {
+      "name": "Data Science Unit",
+      "aiManager": "Data Science Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "Data Science Unit"
+      },
+      "agentCount": 5
+    },
+    {
+      "name": "Security & Compliance Unit",
+      "aiManager": "Security & Compliance Manager",
+      "mboObjective": {
+        "project": "assignments/teamelite-2025.json",
+        "unit": "Security & Compliance Unit"
+      },
+      "agentCount": 5
+    }
+  ],
+  "skillFiles": 39,
+  "nonFunctionalRequirements": {
+    "scalability": "Independent horizontal scaling per unit and agent swarm",
+    "resilience": "Fault isolation and automated recovery",
+    "performance": "End-to-end response times under targets per unit",
+    "security": "AES-256, OAuth2/OIDC, continuous compliance monitoring",
+    "extensibility": "Plug-in architecture for new Departments/Agents"
+  },
+  "_versionNotes": "v1.1.0 (2025-06-10): MBO objectives moved to assignment-time. mboObjective is now a structured pointer to assignments/teamelite-2025.json. Original values preserved there."
+}

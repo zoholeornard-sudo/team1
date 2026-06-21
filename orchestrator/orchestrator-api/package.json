@@ -1,0 +1,6 @@
+{
+  "name": "@orchestrator/api",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "bun src/index.ts" }
+}

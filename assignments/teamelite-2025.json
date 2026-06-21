@@ -1,0 +1,76 @@
+{
+  "project": "teamelite-2025",
+  "assignedAt": "2025-06-10",
+  "assignedBy": "TeamElite",
+  "source": "Seed values extracted from dbox Platform.json v1.1 — these are the original MBO strings formerly baked into the unit templates.",
+  "units": {
+    "SaaS Development Unit (TeamElite)": {
+      "mboObjective": "99.9% uptime, sub-200ms API response under load",
+      "metrics": [
+        { "name": "Uptime", "target": "99.9%", "measurement": "Platform monitoring" },
+        { "name": "API Response", "target": "sub-200ms under load", "measurement": "Performance metrics" },
+        { "name": "Delivery Velocity", "target": "On-time feature delivery", "measurement": "Sprint completion rate" },
+        { "name": "Quality", "target": "<5% bug escape rate", "measurement": "Production incidents" }
+      ]
+    },
+    "Mobile Development Unit": {
+      "mboObjective": "Deliver new mobile features within 2-hour CI cycle; <1s cold app launch; 4.5+ App Store rating",
+      "metrics": [
+        { "name": "CI Cycle Time", "target": "<2 hours", "measurement": "Pipeline metrics" },
+        { "name": "Cold Launch", "target": "<1 second", "measurement": "Performance monitoring" },
+        { "name": "App Store Rating", "target": "4.5+ stars", "measurement": "Store metrics" },
+        { "name": "Release Velocity", "target": "Weekly releases", "measurement": "Release cadence" }
+      ]
+    },
+    "Web Development Unit": {
+      "mboObjective": "<1s TTFB at 100k concurrent users; WCAG 2.1 AA compliance; SEO score >90",
+      "metrics": [
+        { "name": "TTFB", "target": "<1s at 100k concurrent users", "measurement": "Load testing" },
+        { "name": "Accessibility", "target": "WCAG 2.1 AA", "measurement": "Automated audit + manual review" },
+        { "name": "SEO Score", "target": ">90", "measurement": "Lighthouse / third-party audit" }
+      ]
+    },
+    "Desktop Development Unit": {
+      "mboObjective": "Zero installer failures; MTTR for critical crashes <5 minutes",
+      "metrics": [
+        { "name": "Installer Success", "target": "Zero failures", "measurement": "Installer telemetry" },
+        { "name": "Crash MTTR", "target": "<5 minutes for critical crashes", "measurement": "Incident response logs" }
+      ]
+    },
+    "Cloud Infrastructure Unit": {
+      "mboObjective": "95% cost utilization efficiency; <30s average resource provisioning",
+      "metrics": [
+        { "name": "Cost Utilization", "target": "95% efficiency", "measurement": "FinOps dashboard" },
+        { "name": "Provisioning Time", "target": "<30s average", "measurement": "IaC pipeline metrics" }
+      ]
+    },
+    "ML/Ops Unit": {
+      "mboObjective": "<0.5% false positives in drift detection; model deployment <15 minutes",
+      "metrics": [
+        { "name": "Drift False Positives", "target": "<0.5%", "measurement": "Drift detection logs" },
+        { "name": "Deployment Time", "target": "<15 minutes", "measurement": "ML deployment pipeline" }
+      ]
+    },
+    "AI Research Unit": {
+      "mboObjective": "4 prototypes per quarter; 2 peer-reviewed publications per year",
+      "metrics": [
+        { "name": "Prototypes", "target": "4 per quarter", "measurement": "Prototype registry" },
+        { "name": "Publications", "target": "2 per year", "measurement": "Publication tracking" }
+      ]
+    },
+    "Data Science Unit": {
+      "mboObjective": "5 actionable insights per month; A/B test lift >10%",
+      "metrics": [
+        { "name": "Actionable Insights", "target": "5 per month", "measurement": "Insight tracker" },
+        { "name": "A/B Test Lift", "target": ">10%", "measurement": "Experiment results" }
+      ]
+    },
+    "Security & Compliance Unit": {
+      "mboObjective": "Zero critical vulnerabilities; <1-hour incident response time",
+      "metrics": [
+        { "name": "Critical Vulnerabilities", "target": "Zero", "measurement": "Vulnerability scanner" },
+        { "name": "Incident Response", "target": "<1 hour", "measurement": "IR timeline tracking" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  # Loki is already running on the host at :3100 (platform-managed).
+  # Services log to /dev/shm/<service>.log per platform convention; Loki auto-indexes.
+  # No new collector is stood up here (designer1 observability call).
+
+volumes:
+  redis-data:
