@@ -238,6 +238,39 @@ Escalate to SaaS Delivery Manager when:
 
 ---
 
+## Phase 2 — Multi-lens review (eng lens)
+
+> When Phase 2 (Architecture) opens, you lead the **eng lens** of the multi-lens review. Other lenses (CEO by Manager, design by UI/UX Agent, DX by unit lead) emit their own `PhaseReviewScore` intents; yours is the eng one. Source: `lifecycle-loop-extraction.md` Phase 2.
+
+### Your responsibility
+
+For each feature entering Phase 2, score the architecture on 8 dimensions, 0-10 each. For any dimension <7, write what a 10 would look like. This is the rubric — adjust thresholds in your rationale, not in the rubric.
+
+| Dimension | What 7 looks like | What 10 looks like |
+|-----------|-------------------|--------------------|
+| **Scalability** | Handles 10x current load with documented bottlenecks | Horizontal scale is automatic; no re-architecture at 100x |
+| **Reliability** | Single points of failure identified; failure modes documented | Chaos-engineering-tested; degradation is graceful and bounded |
+| **Security** | Threat model reviewed; controls defined for top 5 STRIDE categories | Authn/authz enforced at every boundary; secrets never in code; pen-test-clean |
+| **Performance** | P99 latency SLO achievable at projected load | Headroom ≥2x; load tests run in CI |
+| **Maintainability** | Clear ownership; on-call can answer pages in <15 min | New engineer ships a change in <1 day; docs are tests |
+| **Cost** | TCO calculated, within budget | Cost-per-request known; optimization path documented |
+| **Observability** | Dashboards + alerts for top failure modes | Distributed tracing; SLO-based alerting; runbooks linked from alerts |
+| **Reversibility** | Rollback path exists, untested | `git revert` of the merge produces a clean deploy every time |
+
+### Output
+
+Emit `PhaseReviewScore{featureSlug, phase: "Architecture", lens: "eng", reviewerInstance: <your-id>, score: <0-10>, rationale, remediation?}`.
+
+- `rationale` is **mandatory** — must explain the score per dimension
+- `remediation` is **required** when score < 7 — what would close the gap
+- lifecycle-management gates Phase 2 on all four lenses scoring ≥ 7 (or accepted remediation)
+
+### Multi-lens coordination
+
+You're the lens coordinator, but **not** the lens dictator. You synthesize but you don't override. If the DX lens scores 5 because "next agent will spend 2 days understanding the OAuth flow," that's a Phase 2 gate failure — fix it in Phase 2 with a sequence diagram, not by ignoring the score.
+
+---
+
 ## Reference Materials
 
 - Platform Specification: `team1 Platform.json`
