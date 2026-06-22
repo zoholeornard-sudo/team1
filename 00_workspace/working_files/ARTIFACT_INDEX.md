@@ -90,7 +90,7 @@ Central ledger of deliverables produced by team1 agents. Every artifact logged i
 | A-0012 | 2026-06-21 | @architect-agent | SaaS Development | Orchestrator tree skeleton | `orchestrator/` | code | Architecture | active | 27 files: 6 services + runtime + registry + api + contracts + infra |
 | A-0013 | 2026-06-21 | @architect-agent | SaaS Development | Redis keyspaces doc | `orchestrator/infra/redis-keyspaces.md` | config | Architecture | active | Persistence made explicit; Postgres upgrade path noted |
 | A-0014 | 2026-06-21 | @architect-agent | SaaS Development | docker-compose | `orchestrator/infra/docker-compose.yml` | config | Architecture | active | Redis 7 + AOF; milestone 1 boot infrastructure |
-| A-0015 | 2026-06-21 | @architect-agent | SaaS Development | Design review reconciliation (d1/d2/d3) | `00_workspace/working_files/drafts/design-review-reconciliation.md` | report | Architecture | active | 17 findings: 13 resolved, 1 deferred M3, 1 flagged M5, 2 adopted-as-process |
+| A-0015 | 2026-06-21 | @architect-agent | SaaS Development | Design review reconciliation (d1/d2/d3) | `00_workspace/working_files/drafts/design-review-reconciliation.md` | report | Architecture | active | 17 findings: 13 resolved, 1 deferred M3, 1 flagged M5, 2 adopted-as-process || A-0016 | 2026-06-21 | @architect-agent | SaaS Development | Implementation Plan (canonical) | `00_workspace/working_files/drafts/imp plan draft` | report | Architecture | active | v1.1.0 — 712 lines; 7 milestones (0–6) with step-by-step task lists; §11 risk zones + 5 design calls resolved (Phase 7 no-backtrack, two-tier test isolation, configurable heartbeats, two-stage gap approval, explicit dependsOn API) |
 
 ### Conventions
 
@@ -107,5 +107,5 @@ Central ledger of deliverables produced by team1 agents. Every artifact logged i
 | 2026-06-05 | Per-unit lifecycle.md + phase-reorganized TASKS.md | dbox PMs |
 | 2026-06-05 | Per-unit working_files replicated across all 9 units | dbox PMs |
 | 2026-06-05 | Per-unit lifecycle.md + TASKS.md reorganized under lifecycle phases | dbox PMs |
-| 2026-06-22 | Merged root working_files/artifact_index.md deliverables ledger; paths updated | Restructure |
+| 2026-06-22 | Merged root working_files/artifact_index.md deliverables ledger; paths updated | Restructure || 2026-06-22 | Added A-0016 (Implementation Plan v1.1.0 with §11 risk zones + design calls); synced local §11 edits to both paths after restructuring pull | @architect-agent (via Zo) |
 

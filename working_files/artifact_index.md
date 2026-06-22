@@ -34,7 +34,7 @@ Central ledger of deliverables produced by team1 agents. Every artifact logged i
 | A-0012 | 2026-06-21 | @architect-agent | SaaS Development | Orchestrator tree skeleton | `orchestrator/` | code | Architecture | active | 27 files: 6 services + runtime + registry + api + contracts + infra |
 | A-0013 | 2026-06-21 | @architect-agent | SaaS Development | Redis keyspaces doc | `orchestrator/infra/redis-keyspaces.md` | config | Architecture | active | Persistence made explicit; Postgres upgrade path noted |
 | A-0014 | 2026-06-21 | @architect-agent | SaaS Development | docker-compose | `orchestrator/infra/docker-compose.yml` | config | Architecture | active | Redis 7 + AOF; milestone 1 boot infrastructure |
-| A-0015 | 2026-06-21 | @architect-agent | SaaS Development | Design review reconciliation (d1/d2/d3) | `working_files/drafts/design-review-reconciliation.md` | report | Architecture | active | 17 findings: 13 resolved, 1 deferred M3, 1 flagged M5, 2 adopted-as-process |
+| A-0015 | 2026-06-21 | @architect-agent | SaaS Development | Design review reconciliation (d1/d2/d3) | `working_files/drafts/design-review-reconciliation.md` | report | Architecture | active | 17 findings: 13 resolved, 1 deferred M3, 1 flagged M5, 2 adopted-as-process || A-0016 | 2026-06-21 | @architect-agent | SaaS Development | Implementation Plan (canonical) | `working_files/drafts/imp plan draft` | report | Architecture | active | v1.1.0 — 712 lines; 7 milestones (0–6) with step-by-step task lists; §11 risk zones + 5 design calls resolved (Phase 7 no-backtrack, two-tier test isolation, configurable heartbeats, two-stage gap approval, explicit dependsOn API) |
 
 ---
 

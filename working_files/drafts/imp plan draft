@@ -453,10 +453,12 @@ async function runWorktreeValidation(branch: string, paths: string[]) {
 
 #### 6.3 Task List
 1. Create `orchestrator/edit-coordinator/` as a standalone Turborepo service package.
-2. Implement Redlock global locking manager.
-3. Write throwaway git worktree sandbox validator inside `runWorktreeValidation`.
-4. Connect Redis consumer stream to consume `intents:EditIntent` in batches.
-5. Create a `MergeConflictDetected` handler stub to push conflicts to the event-coordination stream.
+2. Implement Redlock global locking manager — **Tier 1 only** (checkout + apply + commit + push, <5s budget per §11.1).
+3. **Remove `runWorktreeValidation` from the locked block** — tests move to Tier 2 (async, post-release per §11.5).
+4. Implement **Tier 2 async test runner**: `git worktree add` clone → full test suite → emit `TestFailed{commitSha, branch}` on failure.
+5. Implement **`TestFailed` revert handler**: re-acquire lock briefly → `git revert <sha>` → push → release → emit `EditReverted`.
+6. Connect Redis consumer stream to consume `intents:EditIntent` in batches.
+7. Create a `MergeConflictDetected` handler stub to push conflicts to the event-coordination stream.
 
 #### 6.4 Verification & Tests
 - Concurrently launch 3 separate node scripts emitting `EditIntent` messages targeting the *same repository*.
@@ -531,8 +533,9 @@ function resolveBackwardPhase(currentPhase: number): number {
 #### 7.2 Task List
 1. Write the gate evaluator algorithm inside `services/lifecycle-management`.
 2. Connect `MboMetricReport` stream consumer to track health reports emitted by the `health-monitoring` service.
-3. Wire the backward phase rollback handler. Force state re-evaluation on backtrack.
-4. Implement the Phase 7 aggregate checker: collect all `planned-gaps` declared inside progress logs and verify matching Manager approval flags before allowing workflow close-out.
+3. Wire the backward phase rollback handler with **backtrack counter** per `(featureSlug, phase)` — after 3 backtracks, emit `PhaseEscalation` to Manager instead of backward intent (§11.2 Fix B).
+4. **Phase 7 does not backtrack** — `resolveBackwardPhase(7)` throws, feature held in `blocked` state, Manager must extend or accept gaps (§11.2 Fix A, §11.4).
+5. Implement the Phase 7 aggregate checker: collect all `planned-gaps` declared inside progress logs. **Declaration is free (agent authority); rejection requires Manager token** (§11.7). Verify matching Manager approval flags only for rejections, not for declarations.
 
 #### 7.3 Verification & Tests
 - Feed a failing MBO report into the bus during Phase 4 (Testing).
@@ -546,8 +549,10 @@ Implement workflow serialization across independent features in the single repos
 
 #### 8.1 Task List
 1. Implement the `MergeCoordinator` module inside the edit-coordinator service.
-2. Create automated checkers to evaluate dependencies between features (e.g., verifying if `beta` feature has checked out / merged paths touched by `alpha`).
-3. Handle integration lock queues: when a feature enters Phase 5 (Deployment), block down-stream merge requests until integration testing verifies master consistency.
+2. **Implement explicit `dependsOn` API only** — `POST /features/:slug/dependsOn/:otherSlug` via orchestrator-api, Manager-authority required (§11.3, §11.8). No auto-detection for M5.
+3. Store dependencies in lifecycle-management SQLite as `(feature, depends_on_feature, declared_at)`.
+4. Enforce merge rule: feature B cannot enter Phase 5 (Deployment) until every feature in `B.dependsOn` has Phase 7 = passed.
+5. Handle integration lock queues: when a feature enters Phase 5, block down-stream merge requests until integration testing verifies master consistency.
 
 #### 8.2 Verification & Tests
 - Spawn two overlapping features (`alpha` and `beta`).
@@ -587,8 +592,121 @@ To maintain consistent state across all 6 isolated SQLite databases without comp
 
 ---
 
-## 11. Revision History
+## 11. Risk Zones, Mitigations & Design Calls
+
+Five design calls surfaced during risk review. Each is resolved with a concrete default so M3–M5 can proceed without re-litigating.
+
+### 11.1 Risk Zone 1 — Redlock lease timeout (M3)
+
+**Risk:** The 45s lease window assumes pre-commit tests finish quickly. If tests exceed 45s, the lock auto-expires, another agent acquires it, and two agents now operate on the same branch — silent corruption.
+
+**Mitigation adopted:** Split the lock window from the test window.
+
+| Stage | Lock held? | What runs | Budget |
+|-------|-----------|-----------|--------|
+| **Tier 1 — Commit (under lock)** | ✅ Yes | `git checkout` + apply batch + `git commit` + `git push` | <5s |
+| **Tier 2 — Test (async, after release)** | ❌ No | Full test suite on `git worktree add` clone | unbounded |
+
+If Tier 2 fails, emit `TestFailed{commitSha, branch}` → edit-coordinator briefly re-acquires lock, runs `git revert <sha>`, pushes, releases. The agent is re-entered with the revert outcome in its next seed context.
+
+This is designer1's option (b) — short WriteLock + async tests with retroactive revert. It kills the lease-timeout failure mode entirely: the lock is held only for git operations that take seconds, not for test suites that take minutes.
+
+**Profile-first caveat:** Measure Tier 1 P95 latency post-M2. If git checkout+apply+commit exceeds 5s on a representative repo, investigate worktree-cached checkouts. Do not raise the lease to mask slowness.
+
+**M3 code refactor required:** The existing M3 snippet at §6.2 runs `runWorktreeValidation` *inside* the locked block — that must move to an async post-commit handler. The locked block should contain only: checkout → apply → commit → push → release. Tests run after release on the worktree clone.
+
+---
+
+### 11.2 Risk Zone 2 — Backtrack phase logic (M4)
+
+**Risk:** A wrong phase map causes infinite loops (Monitoring → Implementation → Architecture → Planning → ... → Monitoring) or silent data loss (skipping phases).
+
+**Mitigation adopted:** Two fixes.
+
+**Fix A — Phase 7 does not backtrack.** `resolveBackwardPhase(7)` throws, not returns 6. Phase 7 (Analysis) failure = retrospective incomplete or gap-analysis incomplete = process problem, not a Monitoring problem. The feature is held in Phase 7 with `verdict: 'blocked'`. The Manager must either (a) extend the retrospective deadline, or (b) accept the gaps as-shipped (path c). No backward intent is emitted. This breaks the infinite-loop risk at the terminal phase.
+
+**Fix B — Backtrack counter with forced escalation.** lifecycle-management tracks `backtrack_count` per `(featureSlug, phase)`. After **3 backtracks on the same phase** for the same feature, the engine stops emitting backward intents and instead emits `PhaseEscalation{featureSlug, phase, reason}` to the unit Manager. The Manager must either accept a planned gap (path c) or kill the feature. This breaks infinite loops at any non-terminal phase.
+
+Updated `resolveBackwardPhase`:
+
+```typescript
+function resolveBackwardPhase(currentPhase: number, backtrackCount: number): number {
+  if (currentPhase === 7) {
+    throw new Error('PHASE_7_NO_BACKTRACK — Manager must extend deadline or accept gaps');
+  }
+  if (backtrackCount >= 3) {
+    throw new Error('BACKTRACK_LIMIT_EXCEEDED — emit PhaseEscalation to Manager');
+  }
+  const map: Record<number, number> = {
+    1: 1, // Planning — can't go further back
+    2: 1, // Architecture → Planning
+    3: 2, // Implementation → Architecture
+    4: 3, // Testing → Implementation
+    5: 3, // Deployment → Implementation
+    6: 3, // Monitoring → Implementation
+    // 7 omitted — throws above
+  };
+  return map[currentPhase] ?? 1;
+}
+```
+
+**M4 code refactor required:** The existing M4 snippet at §7.1 has `7: 6` in the map. Remove that line and add the throws + backtrack counter as shown above.
+
+---
+
+### 11.3 Risk Zone 3 — Multi-feature merge (M5)
+
+**Risk:** Dependency tracking complexity is underestimated. Two features touching overlapping paths produce integration bugs that the merge coordinator can't resolve.
+
+**Mitigation adopted:** Explicit dependency declaration only. No auto-detection for M5.
+
+`POST /features/:slug/dependsOn/:otherSlug` (via orchestrator-api, Manager-authority required). Stored in lifecycle-management SQLite as `(feature, depends_on_feature, declared_at)`. M5 merge rule: feature B cannot enter Phase 5 (Deployment) until every feature in `B.dependsOn` has Phase 7 = passed. Auto-detection via path-overlap analysis is explicitly **out of scope for M5**; stretch goal for M7+.
+
+This keeps M5 buildable. Auto-detection is a research problem (path-overlap ≠ semantic conflict); explicit declaration is a CRUD problem.
+
+**M5 task list addition:** Implement `POST /features/:slug/dependsOn/:otherSlug` endpoint in `orchestrator-api` with Manager-authority check. Add `feature_dependencies` table to lifecycle-management SQLite. Update MergeCoordinator to query dependencies before allowing Phase 5 entry.
+
+---
+
+### 11.4 Design Call 1 — Phase 7 backtrack target
+
+**Resolved in §11.2 Fix A.** Phase 7 does not backtrack. It blocks and waits for Manager intervention. Rationale: a retrospective failure is a process gap, not a code defect — re-running Implementation won't fix a missing retrospective.
+
+### 11.5 Design Call 2 — Test isolation strategy
+
+**Resolved in §11.1.** Two-tier: scoped tests (Tier 1, under lock, <5s budget for git ops only — tests moved to Tier 2) and full suite (Tier 2, async post-commit on worktree clone with `TestFailed` → revert). The existing M3 code at §6.2 must be refactored: remove `runWorktreeValidation` from the locked block; move it to an async post-commit handler.
+
+### 11.6 Design Call 3 — Heartbeat tuning
+
+**Resolved: configurable, calibrated defaults, validated post-M2.**
+
+| Param | Env var | Default | Source |
+|-------|---------|---------|--------|
+| Interval | `HEARTBEAT_INTERVAL_MS` | 30000 | Estimated |
+| Stall threshold | `HEARTBEAT_STALL_MS` | 90000 | Estimated (3 × interval) |
+
+Post-M2 load test: run 10 concurrent agents × 5-minute turns, measure P99 heartbeat-delivery latency under bus load. Adjust stall threshold to `3 × interval + P99_jitter`. Document the final values in `orchestrator/infra/redis-keyspaces.md` as "calibrated, not theoretical". Until then, defaults are estimates — flag this in the M2 verification checklist.
+
+### 11.7 Design Call 4 — Planned-gaps approval authority
+
+**Resolved: two-stage authority.**
+
+| Stage | Who | Token required? | Effect |
+|-------|-----|-----------------|--------|
+| **Declaration** (per-phase, path c) | Agent | No | Phase exits; gap recorded in progress report |
+| **Review** (Phase 7 gate) | Manager | Yes — to **reject** | Rejection forces backward intent to the originating phase; acceptance is the default |
+
+This matches designer2's spec exactly: declaration is routine and free (keeps ambition cheap); rejection is the gated exception. The Manager token is checked by `agent-registry` at Phase 7 review, not at declaration time. Per-phase declaration never blocks on Manager availability.
+
+### 11.8 Design Call 5 — Multi-feature dependency heuristics
+
+**Resolved in §11.3.** Explicit API only for M5: `POST /features/:slug/dependsOn/:otherSlug`. Auto-detection deferred to M7+. Product scoping: M5 ships with manual dependency declaration; if users complain post-launch, M7 adds path-overlap hints as a non-blocking suggestion, never as an enforced rule.
+
+---
+
+## 12. Revision History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0.0 | 2026-06-21 | `@architect-agent` (via Zo) | Canonical Implementation Plan. Fully aligned with 5 locked decisions, 16 reviewer resolutions, and complete Milestone 0–6 checklists. |
+| 1.1.0 | 2026-06-21 | `@architect-agent` (via Zo) | Added §11 Risk Zones, Mitigations & Design Calls. Resolved 3 risk zones (Redlock lease timeout, backtrack loops, multi-feature merge) and 5 design calls (Phase 7 no-backtrack, two-tier test isolation, configurable heartbeats, two-stage gap approval, explicit dependsOn API). M3/M4/M5 task lists updated to reference §11 resolutions. |
