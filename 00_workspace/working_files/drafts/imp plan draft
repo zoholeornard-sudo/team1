@@ -388,7 +388,7 @@ const git = simpleGit({ baseDir: process.env.REPO_ROOT });
 export async function applyEditBatch(intents: any[]) {
   const { branch, featureSlug, agentId, traceId } = intents[0];
   const resource = `locks:repo:global`; // Single-writer global repository lock
-  const leaseTtl = 45000; // 45s maximum lease window to account for test suites
+  const leaseTtl = 5000; // 5s — Tier 1 only (git ops). Tests run async in Tier 2 (§11.1)
 
   const lock = await redlock.acquire([resource], leaseTtl);
   try {
@@ -409,44 +409,64 @@ export async function applyEditBatch(intents: any[]) {
       }
     }
 
-    // 3. Pre-Commit Validation: Run tests for touched paths (Throwaway worktree used for isolation)
-    const testResult = await runWorktreeValidation(branch, intents.map(i => i.payload.path));
-    if (!testResult.passed) {
-      await git.reset(['--hard']); // Rollback dirty working index
-      throw new Error(`Pre-commit validation rejected edits: ${testResult.error}`);
-    }
-
-    // 4. Commit and Push
+    // 3. Commit and Push (no tests under lock — Tier 1 only)
     const commitMsg = `feat(${featureSlug}): agent ${agentId} batch update [${traceId}]`;
     await git.commit(commitMsg);
     await git.push('origin', branch);
 
-    // 5. Emit EditApplied
-    return { commitSha: (await git.revparse(['HEAD'])).trim() };
+    const commitSha = (await git.revparse(['HEAD'])).trim();
+
+    // 4. Emit EditApplied + TestNeeded (async Tier 2 kicks off after lock release)
+    await bus.publish({ type: 'EditApplied', payload: { commitSha, paths: intents.map(i => i.payload.path) }, /* ...envelope */ });
+    await bus.publish({ type: 'TestNeeded', payload: { commitSha, branch, featureSlug, paths: intents.map(i => i.payload.path) }, /* ...envelope */ });
+
+    return { commitSha };
 
   } finally {
-    await lock.release();
+    await lock.release(); // Lock released — Tier 2 test runner is unblocked
   }
 }
 
-// Validation run on isolated throwaway worktree to prevent stalling core working copy
-async function runWorktreeValidation(branch: string, paths: string[]) {
+// ─── Tier 2: Async test runner (no lock held) ───
+// Lives inside edit-coordinator for M3 simplicity. Extract to separate service if bottleneck post-launch.
+async function runTier2Tests(intent: TestNeededPayload) {
   const worktreePath = `/tmp/scratch-${crypto.randomUUID()}`;
   try {
-    await git.writeSystem('worktree', ['add', '--detach', worktreePath, branch]);
-    
-    // Run lint in scratch workspace
-    await execa('npm', ['run', 'lint', '--', ...paths], { cwd: worktreePath });
-    
-    // Run related unit tests only
-    await execa('npm', ['test', '--', '--findRelatedTests', ...paths], { cwd: worktreePath });
-    
-    return { passed: true };
+    await git.raw(['worktree', 'add', '--detach', worktreePath, intent.branch]);
+
+    // Full test suite (conservative default per §12.4 — optimize post-launch if bottleneck)
+    await execa('npm', ['run', 'lint'], { cwd: worktreePath });
+    await execa('npm', ['test'], { cwd: worktreePath });
+
+    // Tests passed — no action needed. Commit is already live.
   } catch (err: any) {
-    return { passed: false, error: err.stderr || err.message };
+    // Tests failed — emit TestFailed, trigger revert handler
+    await bus.publish({
+      type: 'TestFailed',
+      payload: { commitSha: intent.commitSha, branch: intent.branch, featureSlug: intent.featureSlug, error: err.stderr || err.message, paths: intent.paths },
+      /* ...envelope */
+    });
   } finally {
     await execa('rm', ['-rf', worktreePath]);
-    await git.writeSystem('worktree', ['prune']);
+    await git.raw(['worktree', 'prune']);
+  }
+}
+
+// ─── Revert handler: brief re-lock on TestFailed ───
+async function handleTestFailed(intent: TestFailedPayload) {
+  const lock = await redlock.acquire([`locks:repo:global`], 5000);
+  try {
+    await git.checkout(intent.branch);
+    await git.raw(['revert', '--no-edit', intent.commitSha]);
+    await git.push('origin', intent.branch);
+    const revertSha = (await git.revparse(['HEAD'])).trim();
+    await bus.publish({
+      type: 'EditReverted',
+      payload: { originalCommitSha: intent.commitSha, revertCommitSha: revertSha, branch: intent.branch, featureSlug: intent.featureSlug, reason: intent.error },
+      /* ...envelope */
+    });
+  } finally {
+    await lock.release();
   }
 }
 ```
@@ -516,17 +536,23 @@ export async function evaluateGateCheck(featureSlug: string, currentPhase: numbe
   }
 }
 
-function resolveBackwardPhase(currentPhase: number): number {
+function resolveBackwardPhase(currentPhase: number, backtrackCount: number): number {
+  if (currentPhase === 7) {
+    throw new Error('PHASE_7_NO_BACKTRACK — Manager must extend deadline or accept gaps');
+  }
+  if (backtrackCount >= 3) {
+    throw new Error('BACKTRACK_LIMIT_EXCEEDED — emit PhaseEscalation to Manager');
+  }
   const map: Record<number, number> = {
-    1: 1, // Planning
-    2: 1, // Architecture -> Planning
-    3: 2, // Implementation -> Architecture
-    4: 3, // Testing -> Implementation
-    5: 3, // Deployment -> Implementation
-    6: 3, // Monitoring -> Implementation
-    7: 6  // Analysis -> Monitoring
+    1: 1, // Planning — can't go further back
+    2: 1, // Architecture → Planning
+    3: 2, // Implementation → Architecture
+    4: 3, // Testing → Implementation
+    5: 3, // Deployment → Implementation
+    6: 3, // Monitoring → Implementation
+    // 7 omitted — throws above
   };
-  return map[currentPhase] || 1;
+  return map[currentPhase] ?? 1;
 }
 ```
 
@@ -704,9 +730,67 @@ This matches designer2's spec exactly: declaration is routine and free (keeps am
 
 ---
 
-## 12. Revision History
+## 12. Open Question Resolutions (v1.2.0)
+
+Five open questions surfaced in the v1.1.0 review. All resolved with concrete defaults.
+
+### 12.1 Tier 2 test runner location
+
+**Resolution: Inside `edit-coordinator` for M3.** Extract to a separate `test-runner` service only if it becomes a bottleneck post-launch.
+
+**Rationale:** edit-coordinator already owns the repo lock, git access, and worktree lifecycle. Adding a separate service for M3 would mean duplicating the Redlock + simple-git wiring for no benefit. The async test runner is a consumer of the `TestNeeded` stream — it can live as a second consumer group within the same process. If P95 test duration makes the process unresponsive to `EditIntent` consumption, extract then.
+
+### 12.2 Phase Escalation workflow
+
+**Resolution: Three Manager options, documented as a state machine.**
+
+When `PhaseEscalation` is emitted (backtrack count ≥ 3 on the same phase), the Manager receives the intent with `managerOptions: ["accept_planned_gap", "extend_deadline", "kill_feature"]`. The Manager's response is a `POST /features/:slug/escalation-response` call to orchestrator-api (Manager-authority required):
+
+| Manager action | Effect on lifecycle | Effect on agents |
+|----------------|---------------------|------------------|
+| **accept_planned_gap** | Phase advances with gap declared (path c). `backtrack_count` reset to 0. | Agents proceed to next phase; gap recorded in Phase 7 review |
+| **extend_deadline** | Phase held in `blocked`. `backtrack_count` NOT reset. Agents re-entered with extended MBO target window. | Agents re-attempt the phase with relaxed time budget |
+| **kill_feature** | Feature status → `cancelled`. All instances reaped. Branches archived (not deleted — audit trail). | Instances reaped per M6 sequencing; tasks closed as `cancelled` |
+
+**Timeout:** If the Manager does not respond within 24 hours, the system defaults to `accept_planned_gap` (the least destructive option) and logs a `ManagerUnresponsive` warning to health-monitoring. This prevents features from being stuck indefinitely on a human bottleneck.
+
+### 12.3 Tier 1 profiling (M3 blocker)
+
+**Resolution: Mandatory profiling step added to M2 verification checklist.**
+
+After M2 (spawn + assign) completes, before M3 begins, run a profiling script:
+
+```bash
+# Profile Tier 1 git operations on the target repo
+node scripts/profile-tier1.ts --repo ./ --iterations 50
+```
+
+The script measures P50/P95/P99 latency for: `git checkout <branch>` + file write (100KB) + `git add` + `git commit` + `git push`. **M3 cannot begin until P95 < 5s.** If P95 ≥ 5s, investigate:
+1. Worktree-cached checkouts (`git worktree add` for hot branches)
+2. Shallow clone depth tuning
+3. Parallel push queuing
+
+Document the measured values in `orchestrator/infra/redis-keyspaces.md` as "calibrated" before M3 starts.
+
+### 12.4 Tier 2 test scope
+
+**Resolution: Full suite for M3. Optimize post-launch.**
+
+Tier 2 runs the full test suite (`npm test`), not just affected-path tests. Rationale:
+- Affected-path detection (`jest --findRelatedTests`) is unreliable for cross-module changes
+- Full suite is the safe default — false negatives (passing when broken) are worse than false positives (failing when fine)
+- If the full suite is too slow (>5 min P95), optimize post-launch with: test sharding, parallel worktree clones, or affected-path detection as a fast pre-filter + full suite as confirmation
+
+### 12.5 Heartbeat calibration
+
+**Resolution: Calibrate post-M2, not before.** Already documented in §11.6. The M2 verification checklist must include a heartbeat load test: 10 concurrent agents × 5-minute turns, measure P99 heartbeat-delivery latency. Adjust `HEARTBEAT_STALL_MS` to `3 × interval + P99_jitter`. Until calibrated, defaults (30s interval, 90s stall) are estimates — flag in M2 checklist.
+
+---
+
+## 13. Revision History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0.0 | 2026-06-21 | `@architect-agent` (via Zo) | Canonical Implementation Plan. Fully aligned with 5 locked decisions, 16 reviewer resolutions, and complete Milestone 0–6 checklists. |
 | 1.1.0 | 2026-06-21 | `@architect-agent` (via Zo) | Added §11 Risk Zones, Mitigations & Design Calls. Resolved 3 risk zones (Redlock lease timeout, backtrack loops, multi-feature merge) and 5 design calls (Phase 7 no-backtrack, two-tier test isolation, configurable heartbeats, two-stage gap approval, explicit dependsOn API). M3/M4/M5 task lists updated to reference §11 resolutions. |
+| 1.2.0 | 2026-06-22 | `@architect-agent` (via Zo) | Code refactors applied: M3 snippet refactored (tests moved out of locked block, Tier 2 async runner + TestFailed revert handler added); M4 snippet refactored (Phase 7 throws, backtrack counter + PhaseEscalation emission added). 4 new intent types added to contracts: TestNeeded, TestFailed, EditReverted, PhaseEscalation. §12 added: 5 open questions resolved (Tier 2 location, Phase Escalation workflow, Tier 1 profiling blocker, Tier 2 test scope, heartbeat calibration). |
