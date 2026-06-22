@@ -93,9 +93,9 @@ Compact routing map for the team1 platform. 9 units, 39 agents. Each agent's ful
 - **Skill detail**: `agent-skills/<file>` — role, skills, collaboration matrix, escalation triggers.
 - **MBO targets**: `file assignments/teamelite-2025.json` — unit objectives and metrics.
 - **Lifecycle**: `file .main.lifecycle.md` — canonical phases and which agents lead/support each.
-- **Activity logs**: `file working_files/progress/<handle>-<YYYY-MM-DD>.md`.
-- **Deliverables**: `file working_files/artifact_index.md`.
-- **Templates**: `file agent-skills/references/skill-template.md`, `file agent-skills/references/domain-template.md`, `file working_files/progress/_template.md`.
+- **Activity logs**: `file 00_workspace/working_files/progress/<handle>-<YYYY-MM-DD>.md`.
+- **Deliverables**: `file 00_workspace/working_files/ARTIFACT_INDEX.md`.
+- **Templates**: `file agent-skills/references/skill-template.md`, `file agent-skills/references/domain-template.md`, `file 00_workspace/working_files/progress/_template.md`.
 
 ---
 
@@ -109,7 +109,7 @@ Runtime-populated by the Orchestrator's `agent-registry` service. Base personas 
 
 ### Instance inheritance rule
 
-An instance (e.g. `@architect-agent-2`) **inherits** its base persona's skill file (`agent-skills/architect-agent-skills.md`) for role, skills, collaboration matrix, and escalation triggers. It does **not** get its own skill file. Its distinct identity is its handle suffix, its branch (`feature/<slug>-<handle>-N`), its progress file (`working_files/progress/<handle>-N-<date>.md`), and its `agent-registry` entry. When reaped, progress reports are retained as history; the registry entry is marked `reaped`.
+An instance (e.g. `@architect-agent-2`) **inherits** its base persona's skill file (`agent-skills/architect-agent-skills.md`) for role, skills, collaboration matrix, and escalation triggers. It does **not** get its own skill file. Its distinct identity is its handle suffix, its branch (`feature/<slug>-<handle>-N`), its progress file (`00_workspace/working_files/progress/<handle>-N-<date>.md`), and its `agent-registry` entry. When reaped, progress reports are retained as history; the registry entry is marked `reaped`.
 
 ### `load` field (registry entry)
 

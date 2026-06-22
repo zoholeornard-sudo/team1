@@ -1,0 +1,594 @@
+# team1 Orchestrator — Complete Implementation Plan (Milestones 0–6)
+
+**Version:** 1.0.0
+**Date:** 2026-06-21
+**Author:** `@architect-agent` (via Zo)
+**Status:** Canonical Implementation Blueprint
+**Target Directory:** `projects/team1/orchestrator/`
+
+---
+
+## 1. Executive Summary & Architecture Blueprint
+
+This plan outlines the concrete, step-by-step engineering tasks required to build the team1 multi-agent orchestration engine. The design rigidly enforces the **Five Locked Decisions** and resolves all **16 System & Experience Gaps** identified in the `designer1` (systems), `designer2` (experience), and `designer3` (build-readiness) reviews.
+
+### 1.1 The Five Locked Decisions
+1. **Branch-Only Isolation:** No git worktrees. The orchestrator is the sole filesystem writer via the centralized `edit-coordinator` (formerly `work-coordinator`). Agents never touch the disk; they submit batch `EditIntent`s over the bus. Edits are applied under a serialized global lock, validated (lint/test), committed, and pushed.
+2. **Distinct-Handle Instances:** Spawned instances inherit their base persona skill-template but operate with a unique identity (e.g., `@architect-agent-2`). Each owns an isolated git branch (`feature/<slug>-<handle>`), a dedicated progress markdown file, and a tracked registry state.
+3. **Dual-Gate Lifecycle Gating:** Exit from any phase requires passing **both** the Artifact Gate and the MBO Gate. Gaps can be routinely declared as "planned-gaps" inside progress reports (reviewed at Phase 7) rather than escalating, preventing risk-averse behavior.
+4. **Isolated `orchestrator/` Directory:** Sits as a clean TypeScript monorepo under `projects/team1/orchestrator/`, completely separating system engine code from agent-space deliverables.
+5. **Decoupled-from-Start Microservices:** 6 separate bounded-context processes communicating strictly via at-least-once Redis Streams using a shared `bus-client`. No shared databases; no direct HTTP mesh.
+
+---
+
+## 2. System Topology & Data Flow
+
+```text
+                                  +---------------------------------------+
+                                  |            Orchestrator API           |
+                                  |               (Port 3099)             |
+                                  +-------------------+-------------------+
+                                                      | SpawnAgents
+                                                      v
++-----------------------------------------------------+-----------------------------------------------------+
+|                                            REDIS STREAM INTENT BUS                                        |
+|  +------------------------+  +------------------------+  +------------------------+  +-----------------+  |
+|  | intents:SpawnAgents    |  | intents:TaskCreated    |  | intents:EditIntent     |  | intents:Repls   |  |
+|  +------------------------+  +------------------------+  +------------------------+  +-----------------+  |
++-------------+----------------------------+----------------------------+-----------------------^-----------+
+              |                            |                            |                       |
+              v Consumes                   v Consumes                   v Consumes              | Publishes
++-------------+-------------+  +-----------+------------+  +------------+-------------+         |
+|      agent-registry       |  |   runtime/supervisor   |  |    edit-coordinator      |---------+
+|        (Port 3106)        |  |   (Stateless runner)   |  |      (Mutex Lock)        |
+|  - Tracks "@agent-N"      |  +-----------+------------+  +------------+-------------+
+|  - SQLite system of record|              |                            | Writes
++---------------------------+              | Spawns                     v
+                                           v /zo/ask turn       +-------+-------+
+                              +------------+------------+       |   Local Git   |
+                              |      AI Agent Turn      |       |  Working Dir  |
+                              |   (Receives Seed Ctx)   |       +---------------+
+                              +------------+------------+
+                                           |
+                                           | Returns intents (EditIntent, TaskCompleted)
+                                           v
+                               +-----------+------------+
+                               |    runtime/supervisor  |
+                               +-----------+------------+
+                                           |
+                                           v Publishes to stream
+```
+
+### 2.1 The Polling-Agent Execution Loop (M1 Resolved)
+Because agents run on stateless request/response infrastructures (like `/zo/ask`), they cannot hold open an active connection or consumer group to Redis Streams.
+1. The **`runtime/supervisor`** process acts as the stateful Redis consumer. It listens to `intents:TaskCreated`.
+2. When a task matching an agent's capability is dequeued, the supervisor locks the agent's instance queue.
+3. The supervisor compiles the **Seed Context** (Base Persona Skill + assignments MBO + current phase status + task payload) and invokes the agent via `/zo/ask`.
+4. The agent executes a single turn, returning a JSON array of actions (e.g., read file, write file, write progress log, emit completion).
+5. The supervisor parses the return values, handles errors, and pushes intents (like `EditIntent` or `TaskCompleted`) to the Redis stream on the agent's behalf.
+6. The supervisor manages the **heartbeat** (every 30s) *on behalf of the running agent*, preventing premature reaping during heavy inference.
+
+---
+
+## 3. Concrete Milestones & Step-by-Step Task Lists
+
+---
+
+### Milestone 0: Contract Extensions & Workspace Baseline
+Establish the rigorous boundaries of the project across the shared contract files before writing system code.
+
+#### 3.1 Task List
+1. **Apply Lifecycle Gate Revision:** Rewrite `projects/team1/.main.lifecycle.md` to establish the dual-gate exit criteria and the routine "planned-gaps" path. (Completed in run).
+2. **Extend Skill Template:** Edit `projects/team1/agent-skills/references/skill-template.md` to document the **Turn Protocol**, turn seed format, and `AcquireCheckout{batch}` ergonomics. (Completed in run).
+3. **Extend Progress Template:** Edit `projects/team1/working_files/progress/_template.md` to add the "Planned gaps" field. (Completed in run).
+4. **Extend AGENTS.md:** Append the "Active instances ledger" and the "Instance Inheritance Rules" to `projects/team1/AGENTS.md`. (Completed in run).
+5. **Create ADRs 0001-0004:** Seed the architecture decision records in `orchestrator/docs/adr/` capturing Bounded Contexts as Processes, Redis Streams Transport, Single-Writer Lock, and Polling-Agent Model. (Completed in run).
+6. **Deploy Orchestrator Tree Skeleton:** Create all monorepo project packages, source trees, and config baselines. (Completed in run).
+
+#### 3.2 Verification & Tests
+- Check git diff to ensure no leftover placeholders are present in the edited documents.
+- Run `npm run lint` on the monorepo root to verify typescript config validity.
+
+---
+
+### Milestone 1: Bus & 6 Services Boot
+Configure the Redis Streams transport Layer, generate JSON Schemas from the Typescript Intent specifications, and boot all 6 services as isolated processes.
+
+#### 4.1 Topology & Stream Mappings
+All inter-service traffic travels over `intents:<intent-name>` streams to enforce validation choke points at the event-coordination gateway.
+
+#### 4.2 Code Snippet: Shared Contract Schema (`packages/contracts/src/intents.ts`)
+```typescript
+export type IntentType =
+  | "FeatureSubmitted"
+  | "TaskCreated"
+  | "AgentAssigned"
+  | "SpawnAgents"
+  | "EditIntent"
+  | "EditApplied"
+  | "TaskCompleted"
+  | "PhaseGateCheck"
+  | "MboMetricReport"
+  | "MergeConflictDetected"
+  | "AgentStalled";
+
+export interface IntentEnvelope<T> {
+  type: IntentType;
+  payload: T;
+  ts: number;               // Epoch ms
+  traceId: string;          // UUID propagated across all execution steps
+  featureSlug: string;      // kebab-case globally unique slug minted at FeatureSubmitted
+  branch: string;           // Target branch
+  source: string;           // Emitting service name
+  idempotencyKey: string;   // Unique UUID for at-least-once deduplication (24h TTL)
+}
+
+export interface EditIntentPayload {
+  agentId: string;
+  path: string;
+  op: "add" | "replace" | "delete" | "progress";
+  content?: string;
+}
+```
+
+#### 4.3 Code Snippet: `packages/bus-client/src/index.ts`
+```typescript
+import { createClient, RedisClientType } from 'redis';
+import Ajv from 'ajv';
+
+export class BusClient {
+  private redis: RedisClientType;
+  private ajv = new Ajv();
+
+  constructor(private url = process.env.REDIS_URL || 'redis://localhost:6379') {
+    this.redis = createClient({ url: this.url });
+  }
+
+  async connect() {
+    await this.redis.connect();
+  }
+
+  async publish(stream: string, envelope: any) {
+    // Enforce 24-hour deduplication guard
+    const dedupKey = `idempotency:${envelope.idempotencyKey}`;
+    const acquired = await this.redis.set(dedupKey, "1", { NX: true, EX: 86400 });
+    if (!acquired) {
+      console.warn(`Duplicate intent dropped: ${envelope.idempotencyKey}`);
+      return;
+    }
+
+    // Publish to stream
+    await this.redis.xAdd(stream, '*', {
+      type: envelope.type,
+      envelope: JSON.stringify(envelope)
+    });
+  }
+
+  async subscribe(stream: string, group: string, consumer: string, handler: (data: any) => Promise<void>) {
+    try {
+      await this.redis.xGroupCreate(stream, group, '0', { MKSTREAM: true });
+    } catch (e) {
+      // Group already exists, ignore
+    }
+
+    while (true) {
+      const streams = await this.redis.xReadGroup(group, consumer, [{ key: stream, id: '>' }], { COUNT: 1, BLOCK: 2000 });
+      if (!streams) continue;
+
+      for (const streamEntry of streams) {
+        for (const message of streamEntry.messages) {
+          const envelope = JSON.parse(message.message.envelope);
+          try {
+            await handler(envelope);
+            await this.redis.xAck(streamEntry.key, group, message.id);
+          } catch (err) {
+            console.error(`Stream message handler execution failed: ${message.id}`, err);
+            // Re-route to Dead-Letter Stream after 3 retries (stored in stream-specific retry count hash)
+            await this.handleFailure(streamEntry.key, message, group);
+          }
+        }
+      }
+    }
+  }
+
+  private async handleFailure(stream: string, message: any, group: string) {
+    const retryKey = `retry:${group}:${message.id}`;
+    const retries = await this.redis.incr(retryKey);
+    await this.redis.expire(retryKey, 3600);
+
+    if (retries > 3) {
+      await this.redis.xAdd('intents:dead-letter', '*', {
+        originalStream: stream,
+        messageId: message.id,
+        payload: message.message.envelope,
+        reason: 'Max retries exceeded'
+      });
+      await this.redis.xAck(stream, group, message.id);
+      await this.redis.del(retryKey);
+      console.error(`Message ${message.id} moved to dead-letter stream.`);
+    }
+  }
+}
+```
+
+#### 4.4 Task List
+1. Compile `intents.ts` to both Typescript types and static JSON schemas (`schemas/*.json`) via `ts-json-schema-generator`.
+2. Configure services (`services/task-management`, `services/session-management`, etc.) to import `@team1/contracts` and `@team1/bus-client`.
+3. Set up SQLite databases inside `orchestrator/data/` for the registry and task services. Implement stream replay-on-boot logic:
+   - On startup, read last acknowledged message ID from service-local database.
+   - Seek Redis consumer group offset to that position and catch up.
+4. Implement `/healthz` endpoints on all services.
+5. Create `docker compose` configuration mapping Redis ports and service endpoints.
+
+#### 4.5 Verification & Tests
+- Execute `docker compose up -d` and ensure all containers stabilize.
+- Query `/healthz` on each of the 6 services; verify all return HTTP 200 within 5 seconds.
+- Run the Milestone 1 contract test to publish an invalid payload; assert that it is rejected by Ajv validation and routed to `intents:dead-letter`.
+
+---
+
+### Milestone 2: Spawn & Assign
+Build the control plane spawning mechanics, mapping base personas to distinct instances, creating local workspace artifacts, and assigning tasks.
+
+#### 5.1 Registry Database Schema (`orchestrator/data/registry.db`)
+Each spawned instance must have a durable SQLite database entry in the registry service.
+```sql
+CREATE TABLE agent_instances (
+  id TEXT PRIMARY KEY,               -- e.g., "@architect-agent-2"
+  parent_handle TEXT NOT NULL,       -- e.g., "@architect-agent"
+  feature_slug TEXT NOT NULL,        -- e.g., "auth-migration"
+  branch TEXT NOT NULL,              -- e.g., "feature/auth-migration-architect-agent-2"
+  status TEXT NOT NULL,              -- "launching", "active", "draining", "reaped"
+  progress_path TEXT NOT NULL,       -- "working_files/progress/architect-agent-2-YYYY-MM-DD.md"
+  active_turns INTEGER DEFAULT 0,
+  pending_intents INTEGER DEFAULT 0,
+  last_heartbeat_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+```
+
+#### 5.2 Code Snippet: Spawning Flow in `apps/orchestrator-api`
+```typescript
+import { Router } from 'express';
+import simpleGit from 'simple-git';
+import fs from 'fs/promises';
+import { BusClient } from '@team1/bus-client';
+
+const router = Router();
+const git = simpleGit({ baseDir: process.env.REPO_ROOT });
+const bus = new BusClient();
+
+router.post('/agents/spawn', async (req, res) => {
+  const { unit, personaHandle, capability, count, featureSlug } = req.body;
+
+  // 1. Enforce Manager Authority Check
+  const managerRole = getPersonaManager(personaHandle); // e.g., SaaS Delivery Manager
+  if (!req.headers['x-manager-token']) {
+    return res.status(403).json({ error: "Unauthorized: Spawning requires Manager token" });
+  }
+
+  const spawned = [];
+  for (let i = 2; i <= count + 1; i++) {
+    const handle = `${personaHandle}-${i}`;
+    const branch = `feature/${featureSlug}-${handle.replace('@', '')}`;
+    const progressPath = `working_files/progress/${handle.replace('@', '')}-${new Date().toISOString().split('T')[0]}.md`;
+
+    // 2. Perform Git setup in repository working directory
+    await git.checkoutBranch(branch, 'main');
+    
+    // 3. Write initial progress markdown placeholder
+    const fullProgressPath = `${process.env.REPO_ROOT}/${progressPath}`;
+    const initialReport = generateProgressTemplate(handle, unit, managerRole);
+    await fs.writeFile(fullProgressPath, initialReport, 'utf8');
+    
+    // Commit and push the placeholder on the newly created branch
+    await git.add(progressPath);
+    await git.commit(`chore(orchestrator): initialize progress log for ${handle}`);
+    await git.push('origin', branch);
+
+    // 4. Emit SpawnAgents intent
+    const idempotencyKey = crypto.randomUUID();
+    await bus.publish('intents:spawn-agents', {
+      type: 'SpawnAgents',
+      payload: { handle, parentHandle: personaHandle, branch, progressPath, capability },
+      ts: Date.now(),
+      traceId: req.body.traceId || crypto.randomUUID(),
+      featureSlug,
+      branch,
+      source: 'orchestrator-api',
+      idempotencyKey
+    });
+
+    spawned.push({ agentId: handle, branch, progressPath, status: 'launching' });
+  }
+
+  res.status(201).json({ status: 'spawned', instances: spawned });
+});
+```
+
+#### 5.3 Task List
+1. Implement the Express router for `/agents/spawn` inside `orchestrator-api`.
+2. Code the manager authority validator (verifying if token holder matches the unit's reporting structure).
+3. Connect the Spawner to local workspace git. Create the branch and write progress logs as separate filesystem operations.
+4. Set up the `runtime/supervisor` process:
+   - Consumer of `intents:SpawnAgents`.
+   - Maintain the long-lived supervision loop (heartbeat tracker, process tables).
+   - Inject the task seed context on incoming events.
+
+#### 5.4 Verification & Tests
+- Trigger `POST /agents/spawn` with `count=3` via curl.
+- Assert:
+  - Three distinct branches exist (`git branch -a`).
+  - Three progress log files exist under `working_files/progress/` on their respective branches.
+  - SQLite database in the registry service contains three records with status `launching` / `active`.
+
+---
+
+### Milestone 3: Branch-Only Work Coordination
+Build the core engine bottleneck: serialize write-access to the repository working directory, execute pre-commit testing under lock boundaries, and handle merge exceptions gracefully.
+
+#### 6.1 Lock Architecture
+The checkout lock is represented by a **Redis Redlock** instance on the key `repo:lock:global`.
+
+```text
+EditIntents Received
+         |
+         v
++--------+--------+
+| Queue Manager   | ---> Serializes requests per branch
++--------+--------+
+         |
+         v
++--------+--------+
+| Redlock Acquire | ---> Mutex lock obtained for 30s
++--------+--------+
+         |
+         v
++--------+--------+
+| Git Checkout    | ---> git checkout feature/auth-architect-2
++--------+--------+
+         |
+         v
++--------+--------+
+| File Writes     | ---> applyEditBatch()
++--------+--------+
+         |
+         v
++--------+--------+
+| Exec Validation | ---> npm run lint && npm run test (for touched paths only)
++--------+--------+
+         |
+         +--------------------------+
+         | (PASSED)                 | (FAILED)
+         v                          v
++--------+--------+        +--------+--------+
+| Git Commit/Push |        | Git Reset --hard| ---> Rollback edit
++--------+--------+        +--------+--------+
+         |                          |
+         +------------+-------------+
+                      |
+                      v
++--------+--------+
+| Redlock Release |
++--------+--------+
+```
+
+#### 6.2 Code Snippet: Work Coordinator in `orchestrator/edit-coordinator/src/applier.ts`
+```typescript
+import simpleGit from 'simple-git';
+import { createClient } from 'redis';
+import Redlock from 'redlock';
+import fs from 'fs/promises';
+import { execa } from 'execa';
+
+const redis = createClient({ url: process.env.REDIS_URL });
+const redlock = new Redlock([redis], { retryCount: 10, retryDelay: 500 });
+const git = simpleGit({ baseDir: process.env.REPO_ROOT });
+
+export async function applyEditBatch(intents: any[]) {
+  const { branch, featureSlug, agentId, traceId } = intents[0];
+  const resource = `locks:repo:global`; // Single-writer global repository lock
+  const leaseTtl = 45000; // 45s maximum lease window to account for test suites
+
+  const lock = await redlock.acquire([resource], leaseTtl);
+  try {
+    // 1. Checkout targeted agent branch
+    await git.checkout(branch);
+
+    // 2. Apply batch file edits
+    for (const intent of intents) {
+      const { path, op, content } = intent.payload;
+      const absPath = `${process.env.REPO_ROOT}/${path}`;
+
+      if (op === 'delete') {
+        await fs.rm(absPath, { force: true });
+        await git.rm([path]);
+      } else if (op === 'add' || op === 'replace' || op === 'progress') {
+        await fs.writeFile(absPath, content || '', 'utf8');
+        await git.add([path]);
+      }
+    }
+
+    // 3. Pre-Commit Validation: Run tests for touched paths (Throwaway worktree used for isolation)
+    const testResult = await runWorktreeValidation(branch, intents.map(i => i.payload.path));
+    if (!testResult.passed) {
+      await git.reset(['--hard']); // Rollback dirty working index
+      throw new Error(`Pre-commit validation rejected edits: ${testResult.error}`);
+    }
+
+    // 4. Commit and Push
+    const commitMsg = `feat(${featureSlug}): agent ${agentId} batch update [${traceId}]`;
+    await git.commit(commitMsg);
+    await git.push('origin', branch);
+
+    // 5. Emit EditApplied
+    return { commitSha: (await git.revparse(['HEAD'])).trim() };
+
+  } finally {
+    await lock.release();
+  }
+}
+
+// Validation run on isolated throwaway worktree to prevent stalling core working copy
+async function runWorktreeValidation(branch: string, paths: string[]) {
+  const worktreePath = `/tmp/scratch-${crypto.randomUUID()}`;
+  try {
+    await git.writeSystem('worktree', ['add', '--detach', worktreePath, branch]);
+    
+    // Run lint in scratch workspace
+    await execa('npm', ['run', 'lint', '--', ...paths], { cwd: worktreePath });
+    
+    // Run related unit tests only
+    await execa('npm', ['test', '--', '--findRelatedTests', ...paths], { cwd: worktreePath });
+    
+    return { passed: true };
+  } catch (err: any) {
+    return { passed: false, error: err.stderr || err.message };
+  } finally {
+    await execa('rm', ['-rf', worktreePath]);
+    await git.writeSystem('worktree', ['prune']);
+  }
+}
+```
+
+#### 6.3 Task List
+1. Create `orchestrator/edit-coordinator/` as a standalone Turborepo service package.
+2. Implement Redlock global locking manager.
+3. Write throwaway git worktree sandbox validator inside `runWorktreeValidation`.
+4. Connect Redis consumer stream to consume `intents:EditIntent` in batches.
+5. Create a `MergeConflictDetected` handler stub to push conflicts to the event-coordination stream.
+
+#### 6.4 Verification & Tests
+- Concurrently launch 3 separate node scripts emitting `EditIntent` messages targeting the *same repository*.
+- Verify via Redis logs:
+  - Edits are applied sequentially, with zero merge collisions.
+  - Throwaway worktree successfully flags invalid edits (e.g., syntactical errors) and rolls them back without leaving commits.
+
+---
+
+### Milestone 4: Dual-Gate Lifecycle Gating with MBO
+Implement the core decision engine: enforce co-equal gates, transition phases, handle backward metrics, and process gap declarations on analysis review.
+
+#### 7.1 Lifecycle Transition Engine (`services/lifecycle-management`)
+```typescript
+import { createClient } from 'redis';
+import { BusClient } from '@team1/bus-client';
+
+const bus = new BusClient();
+
+export async function evaluateGateCheck(featureSlug: string, currentPhase: number, artifactCompleted: boolean) {
+  // Query health-monitoring for MBO metric status
+  const mboStatus = await queryMboMetrics(featureSlug, currentPhase);
+
+  const bothPassed = artifactCompleted && mboStatus.ok;
+  const gapDeclared = mboStatus.gapDeclared; // Path (c) - routine gap declaration
+
+  if (bothPassed || gapDeclared) {
+    // Advance Phase
+    await updatePhaseDatabase(featureSlug, currentPhase + 1);
+    await bus.publish('intents:phase-gate-check', {
+      type: 'PhaseGateCheck',
+      payload: { featureSlug, phase: currentPhase + 1, status: 'advanced' },
+      ts: Date.now(),
+      traceId: crypto.randomUUID(),
+      featureSlug,
+      branch: '',
+      source: 'lifecycle-management',
+      idempotencyKey: crypto.randomUUID()
+    });
+  } else {
+    // Fail MBO Gate - Trigger Backtrack/Backward Intent
+    const backtrackPhase = resolveBackwardPhase(currentPhase);
+    await updatePhaseDatabase(featureSlug, backtrackPhase);
+    
+    await bus.publish('intents:phase-gate-check', {
+      type: 'PhaseGateCheck',
+      payload: { featureSlug, phase: backtrackPhase, status: 'backtrack', reason: mboStatus.reason },
+      ts: Date.now(),
+      traceId: crypto.randomUUID(),
+      featureSlug,
+      branch: '',
+      source: 'lifecycle-management',
+      idempotencyKey: crypto.randomUUID()
+    });
+  }
+}
+
+function resolveBackwardPhase(currentPhase: number): number {
+  const map: Record<number, number> = {
+    1: 1, // Planning
+    2: 1, // Architecture -> Planning
+    3: 2, // Implementation -> Architecture
+    4: 3, // Testing -> Implementation
+    5: 3, // Deployment -> Implementation
+    6: 3, // Monitoring -> Implementation
+    7: 6  // Analysis -> Monitoring
+  };
+  return map[currentPhase] || 1;
+}
+```
+
+#### 7.2 Task List
+1. Write the gate evaluator algorithm inside `services/lifecycle-management`.
+2. Connect `MboMetricReport` stream consumer to track health reports emitted by the `health-monitoring` service.
+3. Wire the backward phase rollback handler. Force state re-evaluation on backtrack.
+4. Implement the Phase 7 aggregate checker: collect all `planned-gaps` declared inside progress logs and verify matching Manager approval flags before allowing workflow close-out.
+
+#### 7.3 Verification & Tests
+- Feed a failing MBO report into the bus during Phase 4 (Testing).
+- Assert: State machine rolls back feature current phase to Phase 3 (Implementation), and task-management re-emits coding assignments.
+- Declare a planned gap in the progress log, flag manager-token approval, and assert the phase advances to the next step cleanly.
+
+---
+
+### Milestone 5: Multi-Feature Merge Coordination
+Implement workflow serialization across independent features in the single repository workspace.
+
+#### 8.1 Task List
+1. Implement the `MergeCoordinator` module inside the edit-coordinator service.
+2. Create automated checkers to evaluate dependencies between features (e.g., verifying if `beta` feature has checked out / merged paths touched by `alpha`).
+3. Handle integration lock queues: when a feature enters Phase 5 (Deployment), block down-stream merge requests until integration testing verifies master consistency.
+
+#### 8.2 Verification & Tests
+- Spawn two overlapping features (`alpha` and `beta`).
+- Force `beta` to merge first. Verify that `MergeCoordinator` holds `beta` in a queue until `alpha` clears integration.
+
+---
+
+### Milestone 6: Reap & History
+Build clean wrap-up triggers, preserve audit traces, and mark execution history.
+
+#### 9.1 Task List
+1. Code the supervisor's `ReapInstance` teardown sequence:
+   - Ensure a final `TurnEnd` intent is processed.
+   - Assert the agent commits its retrospective progress log (`_template.md` filled) on the branch.
+   - Run git branch merge (`git merge feature/<slug>-<handle> master`).
+   - Mark instance status to `reaped` in the registry database.
+2. Build the history scraper: parse all reaped progress reports to generate metrics on execution runtime, token cost, and plan accuracy.
+
+#### 9.2 Verification & Tests
+- Force close a feature. Verify that the agent's branch is safely merged to master, the docker containers are reaped, and the registry logs contain complete, rich execution traces.
+
+---
+
+## 10. Operational Guidelines & Failure Recovery
+
+### 10.1 Recovery from Heartbeat Loss
+- If `last_heartbeat_at` in the SQLite register database exceeds 90 seconds:
+  1. The health-monitoring service emits an `AgentStalled` intent.
+  2. The supervisor captures `AgentStalled`, terminates the local child runtime container, and marks the task as orphaned.
+  3. The task-management service catches the orphan event and pushes it back into the queue for reassignment.
+
+### 10.2 Database Rebuild & Consistency (Stream Replay)
+To maintain consistent state across all 6 isolated SQLite databases without complex distributed transactions:
+- When a service boots, it queries its local meta-table for the `last_acked_id`.
+- It executes `XREADGROUP` starting from that offset.
+- The service processes the stream intents sequentially, executing idempotent writes (upserts) to its local DB. This guarantees complete, crash-safe state recovery from any raw Redis storage dump.
+
+---
+
+## 11. Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0.0 | 2026-06-21 | `@architect-agent` (via Zo) | Canonical Implementation Plan. Fully aligned with 5 locked decisions, 16 reviewer resolutions, and complete Milestone 0–6 checklists. |
