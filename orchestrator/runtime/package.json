@@ -3,5 +3,5 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": { "dev": "bun src/index.ts" },
-  "dependencies": { "@orchestrator/contracts": "workspace:*" }
+  "dependencies": { "@team1/contracts": "workspace:*" }
 }

@@ -7,6 +7,6 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@orchestrator/contracts": "workspace:*"
+    "@team1/contracts": "workspace:*"
   }
 }

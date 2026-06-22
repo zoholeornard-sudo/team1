@@ -5,7 +5,7 @@
  * Stub. Milestone 1 will implement bus boot + health ping.
  * See orchestrator/docs/adr/ for design decisions.
  */
-import { IntentType } from "@orchestrator/contracts";
+import { IntentType } from "@team1/contracts";
 
 const PORT = Number(process.env.PORT) || 3102;
 const SERVICE_NAME = "session-management";

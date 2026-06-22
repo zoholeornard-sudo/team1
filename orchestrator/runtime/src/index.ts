@@ -5,7 +5,7 @@
  * intents per instance, feeds each into a /zo/ask turn as seed context.
  * Agents are stateless across turns; runtime holds all state.
  */
-import type { AgentAssigned, TaskCreated } from "@orchestrator/contracts";
+import type { AgentAssigned, TaskCreated } from "@team1/contracts";
 
 const PORT = Number(process.env.PORT) || 3109;
 
