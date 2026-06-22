@@ -146,6 +146,7 @@
 | Test Cases | Detailed test scenarios |
 | Bug Reports | Defect documentation |
 | Test Reports | Execution results, metrics |
+| Browser Tools | E2E testing and UI validation |
 
 ---
 
@@ -208,6 +209,43 @@ Hypothesis 1: [Description]
 ## Prevention
 [What could prevent this in the future]
 ```
+
+---
+
+## Phase 4 — Structural diff review protocol
+
+> Before the QA gate ("tests pass") closes Phase 4, you run a **structural diff review** on the merged branch. Source: gstack `/review`, folded in via `lifecycle-loop-extraction.md` Phase 4 + `agent-skills/references/review-checklist.md`.
+
+### Why this is its own step
+
+The QA gate catches *functional* bugs. This catches *structural* bugs — the ones that pass CI but break in production. Tests can't see: migration ordering, side effects under untested conditions, enum fall-throughs, scope drift, LLM trust-boundary holes.
+
+### How to run
+
+1. Get the diff: `git diff main...feature/<slug>-<handle>-N -- <scopePaths>`
+2. Read every changed file end-to-end (not just the diff hunks)
+3. Walk the checklist in `agent-skills/references/review-checklist.md` — 6 categories: SQL & data safety, LLM trust boundaries, conditional side effects, scope drift, enum & value completeness, reversibility & operability
+4. For each finding, decide: **fix** (emit `TestFailed`, backtrack to Phase 3) or **accept** (record rationale in your progress report)
+
+### Output format
+
+```markdown
+## Structural review — <featureSlug> — <date>
+
+### Findings
+
+| Category | Severity | File | Description | Action |
+|----------|----------|------|-------------|--------|
+| SQL & data safety | High | migrations/0042.ts | Index added with query — OK | accept |
+| LLM trust boundaries | High | agent/route.ts | User prompt concatenated into system prompt | **fix** |
+| Scope drift | Medium | utils/date.ts | Refactored outside declared scope | **fix** |
+```
+
+### Relationship to other phases
+
+- **Phase 3 scope declaration** feeds the scope-drift check
+- **Phase 2 eng-lens scores** may pre-emptively flag SQL/observability categories
+- **Phase 5 verification** re-checks conditional side effects and enum completeness against production
 
 ---
 

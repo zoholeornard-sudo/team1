@@ -146,6 +146,7 @@
 | Design System | Component library documentation |
 | Style Guide | Brand colors, typography, spacing |
 | User Research | Personas, journey maps, test reports |
+| Browser Tool | Accessibility and usability testing |
 
 ---
 

@@ -1,9 +1,9 @@
 # Lifecycle Loop Extraction — gstack `/office-hours` → `/canary` → team1 lifecycle
 
 **Date:** 2026-06-22
-**Status:** Design proposal (awaiting go-ahead to apply)
+**Status:** Approved + partial M0 applied 2026-06-22
 **Depends on:** `gstack-extraction-plan.md` (Initiatives 2, 5, 6)
-**Affects:** `.main.lifecycle.md`, `agent-skills/references/skill-template.md`, all 39 skill files' "Turn protocol" subsections, orchestrator intent catalog
+**Affects:** `00_workspace/<unit>/lifecycle.md` (9 unit files — phase exit-criteria), `agent-skills/references/skill-template.md` (Turn protocol execution-protocol blocks), 39 skill files' Phase subsections, `orchestrator/packages/contracts/src/intents.ts` (3 new intents + 1 payload field), `orchestrator/test/contracts.test.ts`
 
 ---
 
@@ -202,3 +202,45 @@ The proposal: extract gstack's per-stage practices and graft them onto team1's l
 ## The one-sentence version
 
 gstack's `/office-hours` → `/canary` loop is a lifecycle execution pattern: each stage has a concrete practice (forcing questions, multi-lens review, scope locking, structural diff, deploy verification, canary monitoring, structured retro) that tells the agent *what to do* when the phase opens — and team1's lifecycle currently defines phases without defining practices, so grafting gstack's practices onto team1's phases turns named phases into an executable pipeline.
+
+---
+
+## What was applied (M0, 2026-06-22)
+
+Landed as additive changes, validated by `bun test orchestrator/test/contracts.test.ts` — **23 pass, 0 fail**.
+
+### Applied now (M0-ready, no runtime dependency)
+
+| Change | File | What it does |
+|--------|------|--------------|
+| `PhaseReviewScore` intent | `orchestrator/packages/contracts/src/intents.ts` | Multi-lens review scores (CEO/Eng/Design/DX), 0-10 + rationale, optional remediation when <7 |
+| `ScopeChangeRequest` intent | same | Manager approval flow for scope drift (Phase 3 scope-lock protocol) |
+| `DeployVerified` intent | same | Phase 5 verification gate (HEALTHY/DEGRADED/REVERTED) + screenshot + console error diff |
+| `scopePaths` field | `AcquireCheckoutPayload` | Phase 3 scope-lock enforcement target — edit-coordinator will validate paths against this in M3 |
+| Contract tests | `orchestrator/test/contracts.test.ts` | 11 new tests covering the 3 new intents + scopePaths field; count bumped 22 → 25 |
+| Phase 1/2/3/7 execution protocols | `agent-skills/references/skill-template.md` | Inherited by all 39 skill files via Turn protocol block; each protocol names the lead agent, the concrete steps, the output, and the gate the protocol feeds |
+| Phase 4 structural review checklist | `agent-skills/references/review-checklist.md` (new file) | SQL safety, LLM trust boundaries, conditional side effects, scope drift, enum completeness |
+| PM Agent `/office-hours` forcing questions | `agent-skills/product-manager-agent-skills.md` | 6-question Phase 1 protocol with output template + dedup instruction |
+| Architect Agent eng lens rubric | `agent-skills/architect-agent-skills.md` | 8-dimension scoring (scalability, reliability, security, performance, maintainability, cost, observability, reversibility) with "what does 10 look like" framing |
+| QA Agent Phase 4 structural review | `agent-skills/qa-agent-skills.md` | Protocol section + reference to review-checklist.md |
+| Phase 2 + Phase 5 exit criteria | `00_workspace/saas-dev/lifecycle.md` | "Multi-lens review ≥7/10" replaces "Architecture sign-off"; "DeployVerified intent" added to deployment gate |
+
+### Path correction
+
+The original draft referenced `.main.lifecycle.md` at the team1 root. That file does **not** exist. Phase exit criteria live in `00_workspace/<unit>/lifecycle.md` (one per unit, 9 files total). Only `saas-dev/lifecycle.md` was updated as the canonical example; the other 8 units (`web-dev`, `mobile-dev`, `desktop-dev`, `cloud-infra`, `mlops`, `ai-research`, `data-science`, `security-compliance`) should adopt the same Phase 2/5 changes in a follow-up PR — their phase numbering differs (e.g. mlops uses 6 phases numbered differently), so each needs a per-unit mapping.
+
+### Blocked on M2 infrastructure (M0 contract edits done, runtime code pending)
+
+| Change | Where it lands | Why blocked |
+|--------|---------------|-------------|
+| Phase 5 verify code (HTTP 200 + screenshot + console diff + revert) | `orchestrator/services/deployment-agent/src/verify.ts` (or equivalent) | Depends on browse daemon (Initiative 2) + a deploy infrastructure adapter; services are stubs in M0/M1 |
+| Phase 6 canary loop (10-min watch, 30s interval, diff) | `orchestrator/services/health-monitoring/src/canary.ts` | Same — depends on browse daemon + browse-client package |
+| Scope-lock enforcement (`scopePaths` validation) | `orchestrator/services/edit-coordinator/src/index.ts` | edit-coordinator is a stub in M0; validation will be ~10 LOC when the service lands in M3 |
+
+### What still needs review
+
+1. **The other 8 unit `lifecycle.md` files** — apply the Phase 2/5 gate updates with per-unit phase-number mapping.
+2. **All 39 skill files' "Phase X" subsections** — the new execution protocols in `skill-template.md` are inherited, but the per-agent Phase rows (e.g. "Implementation & Build | Review PRs affecting architecture") should reference the new protocols where they materially change the agent's job.
+3. **The CEO lens scoring rubric** — Manager agents (9 of them) need a 0-10 scoring rubric for the "is this the 10-star version?" question. Currently undrafted.
+4. **The DX lens rubric** — "TTHW for the next agent, magical moment, friction" is in the doc but not yet formatted as a 0-10 rubric like the eng lens.
+5. **Manager retro format** — Phase 7 retro is described but no per-Manager skill file update has been written.

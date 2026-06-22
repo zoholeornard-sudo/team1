@@ -146,6 +146,7 @@
 | Performance Budgets | Size and timing constraints |
 | A11y Compliance Matrix | WCAG checklist |
 | SEO Technical Spec | Technical SEO requirements |
+| Browser Tools | Performance and accessibility testing |
 
 ---
 

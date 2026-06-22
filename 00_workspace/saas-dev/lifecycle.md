@@ -6,10 +6,10 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Planning & Requirements** | Product Manager Agent + @saas-delivery-manager | Spec approved, API contracts scoped |
-| 2 | **Architecture & Design** | Architect Agent | Architecture sign-off, tech stack decided |
+| 2 | **Architecture & Design** | Architect Agent | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
 | 3 | **Implementation & Build** | Full-Stack Dev Agents | Feature complete, unit tests pass |
 | 4 | **Testing & QA** | QA Agent | Integration + E2E tests pass, <5% bug escape |
-| 5 | **Deployment & Release** | DevOps Agent + @saas-delivery-manager | Canary → full rollout, rollback plan ready |
+| 5 | **Deployment & Release** | DevOps Agent + @saas-delivery-manager | Canary → full rollout, rollback plan ready, **production health verified (`DeployVerified` intent: HTTP 200 + console error diff + screenshot saved)** |
 | 6 | **Monitoring & Incident Response** | DevOps Agent | Dashboards live, alerts configured, MBO tracking |
 | 7 | **Analysis & Feedback** | Product Manager Agent + @saas-delivery-manager | Retro captured, MBO progress reviewed |
 

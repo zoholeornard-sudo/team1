@@ -79,6 +79,18 @@
 | Backlog Management | Prioritized backlog, sprint planning |
 | Feature Specs | Detailed functional specifications |
 
+### Spec process (5-phase — gstack `/spec` extraction, Initiative 6)
+
+When you lead Phase 1 (Planning), run the 5-phase spec process before writing the scope doc:
+
+1. **Understand the "why"** — Demand reality, status quo, desperate specificity (name one person/org who needs this *today*). This is the `/office-hours` protocol from the skill template's phase execution protocols.
+2. **Scope & boundaries** — Narrowest wedge. What's in, what's out. What MBO metric(s) does this move?
+3. **Interrogate existing code** — **HARD requirement: read the codebase first.** Search for related patterns, existing implementations, and prior decisions before asking questions. Dedupe against existing issues/features.
+4. **Quality-gate the spec** — Does the spec have: problem statement, boundaries, acceptance criteria, NFRs? If any are missing, iterate.
+5. **File the feature** — Emit `FeatureSubmitted` with the `scopeDoc` payload (structured: problem statement, boundaries, acceptance criteria, NFRs). The scope doc is the Phase 1 artifact gate.
+
+The scope doc feeds directly into `FeatureSubmitted.scopeDoc` (see `packages/contracts/src/intents.ts`).
+
 ### 3. Stakeholder Communication
 
 | Skill | Activities |
@@ -241,6 +253,38 @@ When making product decisions, use structured decision-making:
 - Week 1: [Milestone]
 - Week 2: [Milestone]
 ```
+
+---
+
+## Phase 1 — `/office-hours` execution protocol
+
+> When Phase 1 (Planning) opens, you lead. Walk these six forcing questions before writing the scope doc. Source: gstack `/office-hours` + `/spec` phases 1-2, folded in via `lifecycle-loop-extraction.md`.
+
+### The six forcing questions
+
+1. **Demand reality** — Who needs this feature? What breaks for them today?
+2. **Status quo** — What are they doing right now instead? (the workaround is the competition)
+3. **Desperate specificity** — Name one person/org who needs this *today*, not "the market."
+4. **Narrowest wedge** — What's the smallest version that delivers value?
+5. **MBO fit** — Which unit metric(s) does this move? Load targets from `assignments/<project>.json`. If no metric moves, the feature probably isn't a unit-level priority.
+6. **Code-first interrogation** — Read the existing codebase for related patterns *before* writing the scope doc. gstack `/spec` Phase 3 calls this a HARD requirement. Dedupe against existing issues/features in parallel.
+
+### Output
+
+A scope doc attached to `FeatureSubmitted.scopeDoc`:
+- `problemStatement` (the "demand reality" answer)
+- `boundaries` (the "narrowest wedge" answer)
+- `acceptanceCriteria` (measurable, MBO-linked)
+- `nfrs` (non-functional requirements)
+- `existingCodeRead: true` (the code-first interrogation gate)
+- `dedupedAgainst: [...]` (issues/features checked)
+
+### Anti-patterns
+
+- "Users will love this" without naming one
+- Skipping code reading because "we already know the codebase"
+- Scope doc with no MBO link ("strategic value" is not a metric)
+- Confusing feature list with plan (the wedge is the plan; the rest is backlog)
 
 ---
 

@@ -25,6 +25,12 @@ export type IntentType =
   | "PhaseGateCheck"
   | "PhaseGatePassed"
   | "PhaseGateFailed"
+  // Lifecycle loop extraction (gstack → team1): Phase 2 multi-lens review
+  | "PhaseReviewScore"
+  // Lifecycle loop extraction: Phase 3 scope-lock
+  | "ScopeChangeRequest"
+  // Lifecycle loop extraction: Phase 5 deploy verification
+  | "DeployVerified"
   // Health (ADR-0001, health-monitoring)
   | "Heartbeat"
   | "InstanceStalled"
@@ -40,6 +46,10 @@ export type IntentType =
   | "DeadLetter";
 
 export type EditOp = "create" | "update" | "delete" | "progress";
+
+export type ReviewLens = "ceo" | "eng" | "design" | "dx";
+
+export type DeployStatus = "HEALTHY" | "DEGRADED" | "REVERTED";
 
 export interface IntentEnvelope<T extends IntentType, P = unknown> {
   type: T;
@@ -58,6 +68,16 @@ export interface FeatureSubmittedPayload {
   description: string;
   requestingManager: string; // handle of the Manager agent
   units: string[]; // units involved
+  scopeDoc?: ScopeDoc; // structured spec from /spec 5-phase process (gstack extraction Initiative 6)
+}
+
+export interface ScopeDoc {
+  problemStatement: string;
+  boundaries: string[];      // what's in scope / out of scope
+  acceptanceCriteria: string[];
+  nfrs: { name: string; target: string }[];  // non-functional requirements
+  existingCodeRead: boolean;  // Phase 3 of /spec: "HARD requirement: read code first"
+  dedupedAgainst: string[];   // existing issues/features checked for overlap
 }
 
 export interface SpawnAgentsPayload {
@@ -79,6 +99,16 @@ export interface SessionStartedPayload {
   instanceId: string;
   branch: string;
   seedContext: Record<string, unknown>;
+  priorCheckpoint?: ContextCheckpoint; // gstack extraction Initiative 4 — resume after stall/reassign
+}
+
+export interface ContextCheckpoint {
+  taskId: string;
+  decisions: { description: string; rationale: string; timestamp: string }[];
+  filesTouched: string[];
+  remainingSteps: string[];
+  lastTurnId: string;
+  savedAt: string; // ISO-8601 UTC
 }
 
 export interface ReapInstancePayload {
@@ -119,6 +149,11 @@ export interface AcquireCheckoutPayload {
   instanceId: string;
   branch: string;
   batch: EditIntentPayload[]; // full batch attached (turn-bounded, ADR-0003)
+  // Lifecycle loop extraction Phase 3 — scope-lock protocol.
+  // Lead dev agent declares the directory/file boundary when Phase 3 opens.
+  // edit-coordinator rejects any EditIntent whose path falls outside scopePaths
+  // with CheckoutDenied{reason: "out-of-scope"}. Scope changes go through ScopeChangeRequest.
+  scopePaths?: string[];
 }
 
 export interface EditAppliedPayload {
@@ -130,6 +165,7 @@ export interface EditAppliedPayload {
 export interface CheckoutDeniedPayload {
   instanceId: string;
   retryAfterMs: number;
+  reason?: "lock-busy" | "out-of-scope" | "invalid-batch";
 }
 
 // --- Lifecycle gating ---
@@ -148,6 +184,53 @@ export interface PhaseGateResultPayload {
   phase: string;
   passed: boolean;
   reason: string;
+}
+
+// --- Lifecycle loop extraction: Phase 2 multi-lens review ---
+// Each lens reviewer emits one PhaseReviewScore intent. lifecycle-management
+// consumes them and gates Phase 2 on all four lens scores ≥ 7 (or accepted remediation).
+// See lifecycle-loop-extraction.md Phase 2 — multi-lens review protocol.
+
+export interface PhaseReviewScorePayload {
+  featureSlug: string;
+  phase: string;
+  lens: ReviewLens;
+  reviewerInstance: string; // instanceId of the lens reviewer (Manager for ceo, Architect for eng, etc.)
+  score: number; // 0-10
+  rationale: string; // required — "what does a 10 look like?" framing
+  remediation?: string; // optional — accepted remediation path if score < 7
+}
+
+// --- Lifecycle loop extraction: Phase 3 scope-lock escalation ---
+// Lead dev agent or Manager emits this when the declared scope needs to change.
+// The Manager approves/denies; on approval, edit-coordinator updates its scopePaths
+// allowlist for this feature. Agents may NOT self-expand scope — they escalate.
+
+export interface ScopeChangeRequestPayload {
+  featureSlug: string;
+  instanceId: string;
+  currentScopePaths: string[];
+  requestedScopePaths: string[];
+  reason: string;
+  decision?: "approved" | "denied"; // filled by Manager; absent on submission
+  decidedBy?: string;
+}
+
+// --- Lifecycle loop extraction: Phase 5 deploy verification ---
+// DevOps Agent / Release Agent emits after merge + deploy + verify.
+// lifecycle-management requires DeployVerified{status: "HEALTHY"} as part of the
+// Phase 5 artifact gate. DEGRADED/REVERTED triggers PhaseEscalation.
+export interface DeployVerifiedPayload {
+  featureSlug: string;
+  instanceId: string;
+  mergeSha: string;
+  url: string; // production URL
+  status: DeployStatus;
+  deployDurationMs: number;
+  httpStatus?: number;
+  screenshotPath?: string;
+  consoleErrorDelta?: number; // diff against pre-deploy baseline
+  stagingVerifiedFirst?: boolean;
 }
 
 // --- Health ---
@@ -236,6 +319,9 @@ export type CheckoutDenied = IntentEnvelope<"CheckoutDenied", CheckoutDeniedPayl
 export type PhaseGateCheck = IntentEnvelope<"PhaseGateCheck", PhaseGateCheckPayload>;
 export type PhaseGatePassed = IntentEnvelope<"PhaseGatePassed", PhaseGateResultPayload>;
 export type PhaseGateFailed = IntentEnvelope<"PhaseGateFailed", PhaseGateResultPayload>;
+export type PhaseReviewScore = IntentEnvelope<"PhaseReviewScore", PhaseReviewScorePayload>;
+export type ScopeChangeRequest = IntentEnvelope<"ScopeChangeRequest", ScopeChangeRequestPayload>;
+export type DeployVerified = IntentEnvelope<"DeployVerified", DeployVerifiedPayload>;
 export type Heartbeat = IntentEnvelope<"Heartbeat", HeartbeatPayload>;
 export type InstanceStalled = IntentEnvelope<"InstanceStalled", InstanceStalledPayload>;
 export type MergeConflictDetected = IntentEnvelope<"MergeConflictDetected", MergeConflictDetectedPayload>;
