@@ -30,6 +30,12 @@ export type IntentType =
   | "InstanceStalled"
   // Cross-feature (milestone 5 — stub)
   | "MergeConflictDetected"
+  // Async test coordination (v1.1.0 §11.1 — two-tier lock strategy)
+  | "TestNeeded"
+  | "TestFailed"
+  | "EditReverted"
+  // Lifecycle escalation (v1.1.0 §11.2 — backtrack counter)
+  | "PhaseEscalation"
   // Bus hygiene
   | "DeadLetter";
 
@@ -170,6 +176,39 @@ export interface MergeConflictDetectedPayload {
   conflictingBranch: string;
   files: string[];
   // Resolution path: milestone 5. No MergeResolutionApplied / RebaseRequested in v1 catalog.
+}
+
+// --- v1.1.0 additions: async test coordination + lifecycle escalation ---
+
+export interface TestNeededPayload {
+  commitSha: string;
+  branch: string;
+  featureSlug: string;
+  paths: string[];
+}
+
+export interface TestFailedPayload {
+  commitSha: string;
+  branch: string;
+  featureSlug: string;
+  error: string;
+  paths: string[];
+}
+
+export interface EditRevertedPayload {
+  originalCommitSha: string;
+  revertCommitSha: string;
+  branch: string;
+  featureSlug: string;
+  reason: string;
+}
+
+export interface PhaseEscalationPayload {
+  featureSlug: string;
+  phase: number;
+  backtrackCount: number;
+  reason: string;
+  managerOptions: ("accept_planned_gap" | "extend_deadline" | "kill_feature")[];
 }
 
 // --- Bus hygiene ---
