@@ -33,6 +33,6 @@ Agentic AI platform built on a Management by Objectives (MBO) framework: functio
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 2.1.0 | 2026-06-22 | team1 | Moved `working_files/` into `00_workspace/working_files/`; merged artifact ledger; consolidated Activity Logging Guide; added `web-dev/lifecycle.md`. |
-| 2.0.0 | 2025-06-21 | team1 | Renamed platform dbox → team1; added root README, AGENTS.md, lifecycle reference, and `00_workspace/` structure. |
+| 2.0.0 | 2025-06-21 | team1 | Added root README, AGENTS.md, lifecycle reference, and `00_workspace/` structure. |
 | 1.1.0 | 2025-06-10 | TeamElite | MBO objectives moved to assignment-time (`assignments/teamelite-2025.json`). |
 | 1.0.0 | 2025-06-03 | TeamElite | Initial 39 agent skill definitions. |
