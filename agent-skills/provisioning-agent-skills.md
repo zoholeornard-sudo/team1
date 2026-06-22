@@ -101,7 +101,7 @@
 | Artifact | Purpose |
 |----------|---------|
 | Unit-specific deliverable | Primary output of this agent |
-| Progress report | Logged to `00_workspace/cloud-infra/00_workspace/working_files/progress/<handle>-<YYMMDD>.md` |
+| Progress report | Logged to `00_workspace/working_files/progress/<handle>-<YYMMDD>.md` |
 
 ---
 
