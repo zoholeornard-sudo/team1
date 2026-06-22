@@ -2,7 +2,7 @@
 
 The **runtime layer** that ties together the three document layers already in this repo:
 `agent-skills/` (definitions the registry reads), `assignments/` (MBO targets sessions pull),
-`working_files/` (where spawned agents log progress + artifacts).
+`00_workspace/working_files/` (where spawned agents log progress + artifacts).
 
 It is not a new folder of skills — it is the **engine for the docs already written**.
 
@@ -70,4 +70,4 @@ Hooks into the existing Loki pipeline at `:3100`. No new collector. Services log
 | 5 | Cross-feature merge | Not started | MergeConflictDetected + resolution path |
 | 6 | Scale-out | Not started | Sharded coordinators or Postgres swap |
 
-See `docs/adr/` for the decisions this scaffold is built on. See `../working_files/drafts/orchestrator-design-spec.md` for the full design specification.
+See `docs/adr/` for the decisions this scaffold is built on. See `../00_workspace/working_files/drafts/orchestrator-design-spec.md` for the full design specification.

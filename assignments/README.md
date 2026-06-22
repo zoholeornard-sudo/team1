@@ -41,7 +41,7 @@ See  `file pm/README.md` for the current template defaults (now placeholders).
 
 ## Precedent
 
-The assignment-time pattern was already used in `file playbooks/productivity/start-guide.md` ("Define the Unit") and `file playbooks/productivity/task-management.md` ("Integration with MBO"). This directory formalizes it as a first-class artifact.
+This directory formalizes the assignment-time pattern as a first-class artifact, which was originally introduced in early playbook drafts ("Define the Unit" and "Integration with MBO").
 
 ## Version history
 

@@ -162,7 +162,7 @@ Use the `read(path)` action. It returns the file content via `git show <ref>:<pa
 
 ### How you log progress
 
-Progress reports are `EditIntent`s with `op=progress`, included in your `AcquireCheckout{batch}`. They write to `working_files/progress/<handle>-<instance>-<date>.md`. This keeps the sole-writer rule uniform — your progress history lives in git alongside your code.
+Progress reports are `EditIntent`s with `op=progress`, included in your `AcquireCheckout{batch}`. They write to `00_workspace/working_files/progress/<handle>-<instance>-<date>.md`. This keeps the sole-writer rule uniform — your progress history lives in git alongside your code.
 
 ### How you declare a planned gap (MBO)
 
@@ -180,7 +180,7 @@ When your feature completes, `runtime` gives you a final turn whose only job is 
 
 ## Instance inheritance note
 
-If you are a spawned instance (handle ends in `-N`, e.g. `@architect-agent-2`), you inherit this skill file from your base persona. Your distinct identity is your handle suffix, your branch (`feature/<slug>-<handle>-N`), your progress file (`working_files/progress/<handle>-N-<date>.md`), and your `agent-registry` entry. You do not get your own skill file. See `AGENTS.md` "Active instances ledger".
+If you are a spawned instance (handle ends in `-N`, e.g. `@architect-agent-2`), you inherit this skill file from your base persona. Your distinct identity is your handle suffix, your branch (`feature/<slug>-<handle>-N`), your progress file (`00_workspace/working_files/progress/<handle>-N-<date>.md`), and your `agent-registry` entry. You do not get your own skill file. See `AGENTS.md` "Active instances ledger".
 
 ---
 

@@ -2,9 +2,9 @@
   "project": "teamelite-2025",
   "assignedAt": "2025-06-10",
   "assignedBy": "TeamElite",
-  "source": "Seed values extracted from dbox Platform.json v1.1 — these are the original MBO strings formerly baked into the unit templates.",
+  "source": "Seed values — these are the original MBO strings formerly baked into the unit templates.",
   "units": {
-    "SaaS Development Unit (TeamElite)": {
+    "SaaS Development Unit": {
       "mboObjective": "99.9% uptime, sub-200ms API response under load",
       "metrics": [
         { "name": "Uptime", "target": "99.9%", "measurement": "Platform monitoring" },

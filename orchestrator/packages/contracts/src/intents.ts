@@ -106,7 +106,7 @@ export interface EditIntentPayload {
   op: EditOp; // create | update | delete | progress
   path: string; // repo-relative file path
   content?: string; // for create/update
-  progressReportPath?: string; // for op=progress: working_files/progress/<handle>-<date>.md
+  progressReportPath?: string; // for op=progress: 00_workspace/working_files/progress/<handle>-<date>.md
 }
 
 export interface AcquireCheckoutPayload {
