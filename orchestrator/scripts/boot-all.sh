@@ -4,10 +4,12 @@
 # Usage: bash scripts/boot-all.sh
 
 set -euo pipefail
-cd "$(dirname "$0")/.."
+ORCH_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ORCH_ROOT"
 
 LOG_DIR="/dev/shm"
 PIDS=()
+REDIS_URL="redis://localhost:6379"
 
 # Services with HTTP ports
 declare -A SERVICES=(
@@ -30,15 +32,23 @@ for name in task-management session-management health-monitoring lifecycle-manag
     agent-registry|orchestrator-api) dir="$name" ;;
     *) dir="services/$name" ;;
   esac
+
+  # Service-specific env vars
+  extra_env=""
+  case "$name" in
+    agent-registry) extra_env="REGISTRY_DB=$ORCH_ROOT/data/registry.db" ;;
+    orchestrator-api) extra_env="REPO_ROOT=$ORCH_ROOT/.." ;;
+  esac
+
   echo "  Starting $name on :$port..."
-  PORT="$port" bun "$dir/src/index.ts" > "$LOG_DIR/orch-$name.log" 2>&1 &
+  env PORT="$port" REDIS_URL="$REDIS_URL" $extra_env bun "$dir/src/index.ts" > "$LOG_DIR/orch-$name.log" 2>&1 &
   PIDS+=($!)
   echo "    PID: $!"
 done
 
 # Start edit-coordinator (process-only, no port)
 echo "  Starting edit-coordinator (no port)..."
-bun services/edit-coordinator/src/index.ts > "$LOG_DIR/orch-edit-coordinator.log" 2>&1 &
+REDIS_URL="$REDIS_URL" bun services/edit-coordinator/src/index.ts > "$LOG_DIR/orch-edit-coordinator.log" 2>&1 &
 PIDS+=($!)
 echo "    PID: $!"
 
