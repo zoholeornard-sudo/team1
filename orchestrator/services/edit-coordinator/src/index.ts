@@ -1,30 +1,22 @@
 /**
- * edit-coordinator — bounded context service (ADR-0001)
- * Port: :3106
+ * edit-coordinator — sole filesystem writer (ADR-0003)
+ * No HTTP port — process-only service (consumes EditIntent stream, applies under lock).
  *
- * Stub. Milestone 1 will implement bus boot + health ping.
- * See orchestrator/docs/adr/ for design decisions.
+ * Milestone 1: bus boot only. Milestone 3: implement lock + applier.
  */
-import { IntentType } from "@team1/contracts";
+import { BusClient } from "@team1/bus-client";
 
-const PORT = Number(process.env.PORT) || 3106;
 const SERVICE_NAME = "edit-coordinator";
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
-console.log(`[${SERVICE_NAME}] booting on :${PORT}`);
+const bus = new BusClient({ redisUrl: REDIS_URL, serviceName: SERVICE_NAME });
 
-// Milestone 1: subscribe to relevant intent streams (see infra/redis-keyspaces.md)
-// Milestone 1: respond to health ping from event-coordination
-// Milestone 2+: implement domain logic
-
-Bun.serve({
-  port: PORT,
-  fetch(req) {
-    const url = new URL(req.url);
-    if (url.pathname === "/health") {
-      return Response.json({ service: SERVICE_NAME, status: "booting", port: PORT });
-    }
-    return new Response("Not found", { status: 404 });
-  },
+bus.connect().then(() => {
+  console.log("[edit-coordinator] connected to Redis bus — ready for M3 implementation");
+}).catch((err) => {
+  console.warn("[edit-coordinator] Redis connection failed:", err?.message);
+  process.exit(1);
 });
 
-console.log(`[${SERVICE_NAME}] listening on :${PORT}`);
+// Keep process alive
+setInterval(() => {}, 1000);

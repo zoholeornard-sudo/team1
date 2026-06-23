@@ -2,29 +2,53 @@
  * event-coordination — bounded context service (ADR-0001)
  * Port: :3105
  *
- * Stub. Milestone 1 will implement bus boot + health ping.
- * See orchestrator/docs/adr/ for design decisions.
+ * Milestone 1: bus boot + /healthz endpoint + bus connection.
  */
-import { IntentType } from "@team1/contracts";
+import { BusClient } from "@team1/bus-client";
 
 const PORT = Number(process.env.PORT) || 3105;
 const SERVICE_NAME = "event-coordination";
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
-console.log(`[${SERVICE_NAME}] booting on :${PORT}`);
+let busConnected = false;
+let bootTime = Date.now();
 
-// Milestone 1: subscribe to relevant intent streams (see infra/redis-keyspaces.md)
-// Milestone 1: respond to health ping from event-coordination
-// Milestone 2+: implement domain logic
+// Connect to Redis bus (non-blocking — service still serves /healthz even if Redis is down)
+const bus = new BusClient({ redisUrl: REDIS_URL, serviceName: SERVICE_NAME });
+bus.connect().then(() => {
+  busConnected = true;
+  console.log("[event-coordination] connected to Redis bus");
+}).catch((err) => {
+  console.warn("[event-coordination] Redis bus connection failed (non-fatal):", err?.message);
+});
 
-Bun.serve({
+const server = Bun.serve({
   port: PORT,
   fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname === "/health") {
-      return Response.json({ service: SERVICE_NAME, status: "booting", port: PORT });
+    if (url.pathname === "/healthz") {
+      return Response.json({
+        status: "ok",
+        service: SERVICE_NAME,
+        port: PORT,
+        busConnected,
+        uptime: Date.now() - bootTime,
+      });
+    }
+    if (url.pathname === "/readyz") {
+      return Response.json({
+        ready: busConnected,
+        service: SERVICE_NAME,
+      });
     }
     return new Response("Not found", { status: 404 });
   },
 });
 
-console.log(`[${SERVICE_NAME}] listening on :${PORT}`);
+console.log("[event-coordination] listening on :");
+
+process.on("SIGTERM", () => {
+  console.log("[event-coordination] shutting down");
+  server.stop();
+  process.exit(0);
+});

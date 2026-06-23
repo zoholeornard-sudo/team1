@@ -93,9 +93,11 @@ Compact routing map for the team1 platform. 9 units, 39 agents. Each agent's ful
 - **Skill detail**: `agent-skills/<file>` — role, skills, collaboration matrix, escalation triggers.
 - **MBO targets**: `file assignments/teamelite-2025.json` — unit objectives and metrics.
 - **Lifecycle**: `file .main.lifecycle.md` — canonical phases and which agents lead/support each.
-- **Activity logs**: `file 00_workspace/working_files/progress/<handle>-<YYYY-MM-DD>.md`.
-- **Deliverables**: `file 00_workspace/working_files/ARTIFACT_INDEX.md`.
-- **Templates**: `file agent-skills/references/skill-template.md`, `file agent-skills/references/domain-template.md`, `file 00_workspace/working_files/progress/_template.md`.
+- **Activity logs**: `00_workspace/working_files/progress/<handle>-<YYYY-MM-DD>.md`.
+- **Deliverables**: `00_workspace/working_files/ARTIFACT_INDEX.md`.
+- **Templates**: `agent-skills/references/skill-template.md`, `agent-skills/references/domain-template.md`, `00_workspace/working_files/progress/_template.md`.
+- **gstack lifecycle-loop extraction (applied 2026-06-22)**: `00_workspace/working_files/drafts/lifecycle-loop-extraction.md` — design + applied log. Landed M0 work: 3 new intents (`PhaseReviewScore`, `ScopeChangeRequest`, `DeployVerified`), `scopePaths` field on `AcquireCheckout`, Phase 1/2/3/7 execution protocols in `skill-template.md`, Phase 4 review checklist in `agent-skills/references/review-checklist.md`, per-unit Phase 2/5 exit-criteria changes in all 9 `00_workspace/<unit>/lifecycle.md`, CEO/eng/design/DX lens rubrics + structured retro in all 9 `pm/*-manager.md`, Phase 3 scope-declaration in 5 lead dev skill files, Phase 5 verify protocol in DevOps/Release-Mobile/Monitor-MLOps skill files. Runtime code (Phase 5 verify, Phase 6 canary, scope-lock enforcement) blocked on Initiative 2 (browse daemon) + M3 (edit-coordinator).
+- **gstack value-extraction plan**: `00_workspace/working_files/drafts/gstack-extraction-plan.md` — 6 initiatives, parent of lifecycle-loop-extraction.md.
 
 ---
 

@@ -19,7 +19,7 @@ const SERVICES = [
   { name: "lifecycle-management", port: 3104 },
   { name: "event-coordination", port: 3105 },
   { name: "agent-registry", port: 3106 },
-  { name: "orchestrator-api", port: 3099 },
+  { name: "orchestrator-api", port: 3098 },
 ];
 
 async function isReachable(port: number): Promise<boolean> {
@@ -33,7 +33,7 @@ async function isReachable(port: number): Promise<boolean> {
   }
 }
 
-const anyServiceUp = await isReachable(3099);
+const anyServiceUp = await isReachable(3098);
 
 describe.skipIf(!anyServiceUp)("Service health checks (requires docker compose up)", () => {
   for (const svc of SERVICES) {
