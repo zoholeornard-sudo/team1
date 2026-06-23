@@ -131,7 +131,7 @@ describe.skipIf(!apiUp)("Spawn & Assign (M2 — requires running services)", () 
     const resp = await fetch(`${REGISTRY_URL}/agents?featureSlug=${TEST_SLUG}`);
     const body = await resp.json();
     expect(body.instances).toHaveLength(3);
-    const handles = body.instances.map((i: any) => i.handle);
+    const handles = body.instances.map((i: any) => i.id);
     expect(handles).toContain("@architect-agent-2");
     expect(handles).toContain("@architect-agent-3");
     expect(handles).toContain("@architect-agent-4");
