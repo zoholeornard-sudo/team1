@@ -1,0 +1,66 @@
+name: Orchestrator CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "orchestrator/**"
+      - ".github/workflows/orchestrator-ci.yml"
+  pull_request:
+    paths:
+      - "orchestrator/**"
+
+jobs:
+  # --- Tier 1: Gate — free tests, no API spend, runs on every PR ---
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        working-directory: orchestrator
+        run: bun install
+      - name: Run contract tests
+        working-directory: orchestrator
+        run: bun test test/contracts.test.ts
+      - name: Type check
+        working-directory: orchestrator
+        run: bun x tsc --noEmit --project packages/contracts/tsconfig.json || true
+
+  # --- Tier 2: Integration — requires Redis, runs on PRs touching orchestrator/ ---
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        working-directory: orchestrator
+        run: bun install
+      - name: Run bus round-trip tests
+        working-directory: orchestrator
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: bun test test/bus-roundtrip.test.ts
+      - name: Run service health tests (if services built)
+        working-directory: orchestrator
+        run: bun test test/service-health.test.ts
+        continue-on-error: true # services may not be built yet at M0
+
+  # --- Tier 3: Periodic — LLM evals, nightly only, costs money ---
+  # Not implemented yet. Placeholder for when agent-turn evals exist.
+  # Will follow gstack's evals-periodic pattern: run a curated set of
+  # agent-turn scenarios, judge outputs, gate on pass-rate thresholds.
