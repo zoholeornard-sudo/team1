@@ -118,8 +118,8 @@ describe.skipIf(!apiUp)("Spawn & Assign (M2 — requires running services)", () 
   it("3 progress markdown files exist under 00_workspace/working_files/progress/", async () => {
     for (const inst of spawnResponse.instances) {
       const handleSlug = inst.agentId.replace("@", "").replace(/-/g, "-");
-      // Progress path format: <handle-slug>-<date>.md
-      const files = await $`ls ${REPO_ROOT}/${PROGRESS_DIR}/`.text().catch(() => "");
+      // Progress file is committed on the feature branch — check via git ls-tree
+      const files = await $`git -C ${REPO_ROOT} ls-tree --name-only ${inst.branch} -- ${PROGRESS_DIR}/`.text().catch(() => "");
       const matching = files
         .split("\n")
         .filter((f) => f.includes(handleSlug) && f.endsWith(".md"));
