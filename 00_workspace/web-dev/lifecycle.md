@@ -6,10 +6,10 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Planning & Requirements** | @web-delivery-manager + Web Architect Agent | Scope approved, browser support matrix defined |
-| 2 | **Architecture & Design** | Web Architect Agent | Tech stack decided, design system aligned with SaaS/Mobile |
+| 2 | **Architecture & Design** | Web Architect Agent | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
 | 3 | **Implementation & Build** | Web Architect Agent | Feature complete, unit tests pass, Core Web Vitals green |
 | 4 | **Testing & QA** | Web Architect Agent | Cross-browser testing passed, WCAG 2.1 AA validated, Lighthouse >90 |
-| 5 | **Deployment & Release** | Web Architect Agent + @web-delivery-manager | CDN deployment complete, rollback plan ready |
+| 5 | **Deployment & Release** | Web Architect Agent + @web-delivery-manager | CDN deployment complete, rollback plan ready, **DeployVerified: HTTP 200 on prod URL, Lighthouse ≥90 on prod, console-error diff vs pre-deploy baseline clean** |
 | 6 | **Monitoring & Incident Response** | Web Architect Agent | RUM dashboards live, TTFB alerts configured |
 | 7 | **Analysis & Feedback** | @web-delivery-manager | Retro captured, Core Web Vitals trends reviewed, MBO progress assessed |
 

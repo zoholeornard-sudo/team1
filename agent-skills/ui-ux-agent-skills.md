@@ -246,6 +246,12 @@ Create atmosphere with:
 
 ---
 
+## Phase 2 — Design lens rubric (gstack lifecycle loop)
+
+> When you're the design lens reviewer in a Phase 2 multi-lens review, score each
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |

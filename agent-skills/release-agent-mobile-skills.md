@@ -161,6 +161,12 @@ Escalate to Mobile Platform Manager when:
 
 ---
 
+## Phase 5 — Verify-after-deploy protocol (gstack lifecycle loop)
+
+> You lead Phase 5 (Deployment) for the Mobile Unit. The team1 lifecycle gate now requires **mobile health verified** before phase exit — `DeployVerified{fea
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |

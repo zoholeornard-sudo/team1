@@ -116,6 +116,46 @@
 
 ---
 
+## Phase 2 — CEO lens review (gstack lifecycle loop)
+
+> When Phase 2 (Data Pipeline Setup) opens in this unit, **you run the CEO lens** of the multi-lens review. Eng → Data Ingestion + Feature Engineering, design → (often n/a; include for dashboards), DX → whoever consumes the pipeline (Stats + Reporting). You own the CEO lens. The phase does not exit until all 4 lens scores are recorded and yours is ≥7/10 (or accepted remediation).
+
+**Scoring rubric (0–10; for each, write what a 10 looks like):**
+
+| Dimension | 0 (broken) | 5 (shippable) | 10 (remarkable) |
+|-----------|-----------|---------------|-----------------|
+| Business fit | Analysis is technically correct, business ignores it | Answers the asked question | Answers the *next* question before it's asked; changes a decision |
+| Data quality | Silent NaNs, silent duplicates | Validated + alerted | Source of truth; quality is observable; freshness is a feature |
+| Statistical rigor | No baseline, no confidence | Power analysis, CIs | Pre-registered hypotheses, multiple-testing corrections, honest negative results |
+| Pipeline reliability | Pipeline breaks silently | Re-runnable + alerted | Idempotent, versioned, observable; SLO on freshness and completeness |
+| Reversibility | Pipeline rewrites break downstream | Versioned + tested | New pipelines are A/B'd against old; rollback is one config flip |
+
+**Output:** `PhaseReviewScore{phase: 2, lens: "ceo", score, rationale}` intent + artifact-index entry.
+
+### DX lens — Data Science Unit
+
+> The DX lens is the 4th lens in the Phase 2 multi-lens review. The DX lens reviewer for Data Science is the Statistical Analysis Agent (Phase 3 lead — the next agent to consume the data pipeline).
+
+## Phase 7 — Structured retro format (gstack lifecycle loop)
+
+> When Phase 7 (Feedback Loop) opens, **you lead the retro**. Save to `00_workspace/working_files/progress/ds-retro-<featureSlug>-<date>.md`. Actionable-insight count + A/B lift distribution + stakeholder satisfaction are first-class inputs.
+
+**Per-agent breakdown** (one block per agent instance):
+
+```markdown
+### @<handle>-<N>
+- **Shipped:** [analyses, dashboards, A/B test reports, stakeholder decks]
+- **Praise:** [1 specific thing done well, anchored in evidence]
+- **Growth:** [1 specific leveling-up suggestion, anchored in data]
+```
+
+**Actionable insights count:** against the monthly target; quality of stakeholder follow-through.
+**A/B test lift distribution:** spread of observed lifts; underpowered experiments flagged.
+**Pipeline reliability SLI:** freshness + completeness trend; incidents and root causes.
+**MBO gap carry-forward:** all `plannedGaps` become mandatory Phase 1 inputs.
+
+---
+
 ## Version History
 
 | Version | Date | Changes |

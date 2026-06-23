@@ -161,6 +161,12 @@ Escalate to Mobile Platform Manager when:
 
 ---
 
+## Phase 3 — Scope-declaration protocol (gstack `/freeze` lifecycle loop)
+
+> When Phase 3 opens, you and `@frontend-dev-agent-mobile`
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |

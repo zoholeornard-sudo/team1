@@ -6,9 +6,9 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Ideation** | @research-innovation-manager + Literature Review Agent | Research question defined, literature reviewed |
-| 2 | **Planning** | Experiment Runner Agent + @research-innovation-manager | Experiment design approved, resources allocated |
-| 3 | **Execution** | Experiment Runner Agent + Metric Analyzer Agent | Experiments run, metrics collected |
-| 4 | **Documentation** | Publication Agent + Metric Analyzer Agent | Findings documented, reproducibility verified |
+| 2 | **Planning** | Experiment Runner Agent + @research-innovation-manager | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
+| 3 | **Execution** | Experiment Runner Agent + Metric Analyzer Agent | Experiments run, metrics collected, **experiment health verified** (results reproducible + seed-controlled + run logs saved to `00_workspace/working_files/`) |
+| 4 | **Documentation** | Publication Agent + Metric Analyzer Agent | Findings documented, reproducibility verified, **DeployVerified: notebook re-runs from clean clone in <target time, artifact hashes match publication claims** |
 | 5 | **Integration** | Collaboration Agent + @research-innovation-manager | Knowledge transferred to ML/Ops or Data Science |
 
 ## Phase Details

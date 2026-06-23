@@ -147,6 +147,46 @@ SEVERITY LEVELS:
 
 ---
 
+## Phase 2 — CEO lens review (gstack lifecycle loop)
+
+> When Phase 2 (Architecture & Design) opens in this unit, **you run the CEO lens** of the multi-lens review. Other lenses are distributed: eng → Architect Agent, design → UI/UX Agent, DX → relevant unit lead. You own the CEO lens — the "is this the 10-star product?" question. The phase does not exit until all 4 lens scores are recorded in the artifact index and your CEO score is ≥7/10 (or remediation is accepted via the lifecycle-management agent).
+
+**Scoring rubric (rate each 0–10; for each, write what a 10 looks like):**
+
+| Dimension | 0 (broken) | 5 (shippable) | 10 (remarkable) |
+|-----------|-----------|---------------|-----------------|
+| Problem clarity | Vague, unmeasurable | Clear problem statement, known users | One-sentence problem, named user, known cost-of-inaction |
+| Differentiation | Indistinguishable from alternatives | Clear differentiator | The first thing users would tell a friend about |
+| Velocity-fit | Doesn't compound future work | Works in isolation | Each shipped piece makes the next piece easier |
+| Trust surface | Security/compliance as afterthought | Meets baseline controls | Trust is a *feature* — observable, auditable, advertised |
+| Reversibility | One-way door | Some escape hatches | Fully reversible; we can change our minds cheaply |
+
+**Output:** a `PhaseReviewScore{phase: 2, lens: "ceo", score, rationale}` intent (see `orchestrator/packages/contracts/src/intents.ts`) and a short rationale paragraph in the artifact index entry for the feature.
+
+### DX lens — SaaS Unit
+
+> The DX (developer experience) lens is the 4th lens in the Phase 2 multi-lens review. The DX lens reviewer for the SaaS unit is the Fullstack Dev Agent (the next agent who'll touch the artifact in Phase 3).
+
+## Phase 7 — Structured retro format (gstack lifecycle loop)
+
+> When Phase 7 (Analysis & Feedback) opens, **you lead the retro**. Save to `00_workspace/working_files/progress/<unit>-retro-<featureSlug>-<date>.md`. The retro feeds Phase 1 of the next feature (planned gaps + per-agent growth items become mandatory inputs).
+
+**Per-agent breakdown** (one block per agent instance that worked the feature):
+
+```markdown
+### @<handle>-<N>
+- **Shipped:** [commits, artifacts, progress reports — links]
+- **Praise:** [1 specific thing done well, anchored in evidence]
+- **Growth:** [1 specific leveling-up suggestion, anchored in data not criticism]
+```
+
+**Shipping streak:** consecutive on-time phase exits across the unit's active features this cycle.
+**Commit type mix:** feat/fix/refactor/test ratio per agent (flags agents who skip tests or over-refactor).
+**Ship-of-the-feature:** highest-impact artifact produced (pick one — design doc, ADR, prototype, postmortem).
+**MBO gap carry-forward:** all `plannedGaps` declared in `PhaseGateCheck` payloads this cycle become mandatory Phase 1 inputs for the next feature's `/office-hours` round.
+
+---
+
 ## Version History
 
 | Version | Date | Changes |

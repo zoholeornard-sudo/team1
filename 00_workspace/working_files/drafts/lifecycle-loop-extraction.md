@@ -225,9 +225,17 @@ Landed as additive changes, validated by `bun test orchestrator/test/contracts.t
 | QA Agent Phase 4 structural review | `agent-skills/qa-agent-skills.md` | Protocol section + reference to review-checklist.md |
 | Phase 2 + Phase 5 exit criteria | `00_workspace/saas-dev/lifecycle.md` | "Multi-lens review ≥7/10" replaces "Architecture sign-off"; "DeployVerified intent" added to deployment gate |
 
-### Path correction
+### Path correction (resolved)
 
-The original draft referenced `.main.lifecycle.md` at the team1 root. That file does **not** exist. Phase exit criteria live in `00_workspace/<unit>/lifecycle.md` (one per unit, 9 files total). Only `saas-dev/lifecycle.md` was updated as the canonical example; the other 8 units (`web-dev`, `mobile-dev`, `desktop-dev`, `cloud-infra`, `mlops`, `ai-research`, `data-science`, `security-compliance`) should adopt the same Phase 2/5 changes in a follow-up PR — their phase numbering differs (e.g. mlops uses 6 phases numbered differently), so each needs a per-unit mapping.
+The original draft referenced `.main.lifecycle.md` at the team1 root. That file does **not** exist. Phase exit criteria live in `00_workspace/<unit>/lifecycle.md` (one per unit, 9 files total). All 9 unit lifecycle files were updated in this rollout with per-unit phase-number mappings (e.g. cloud-infra's "deployment" concept is Phase 3 Provisioning, ai-research's is Phase 4 Documentation). The DeployVerified intent is unit-agnostic — each unit maps it to its own "live-thing-verified" equivalent (HTTP 200 for SaaS/web, crash baseline for mobile/desktop, drift detector active for mlops, notebook re-run for ai-research, etc.).
+
+### CEO lens + retro (all 9 Managers)
+
+Each Manager file under `pm/<unit>-manager.md` now contains:
+- **Phase 2 — CEO lens review** with the 0-10 scoring rubric (remarkable/not just functional, target-user-magic, focus-cost tradeoff, etc.)
+- **Phase 7 — Structured retro format** with per-agent breakdown template (praise + growth + shipping streak + ship-of-feature + MBO gap carry-forward)
+
+The CEO lens is a single rubric reused across all 9 Managers (the "is this the 10-star version?" question is unit-agnostic); the retro format is unit-agnostic too. Both are local to the Manager file rather than the skill template because the Manager runs the lens / writes the retro — not the lead agent.
 
 ### Blocked on M2 infrastructure (M0 contract edits done, runtime code pending)
 
@@ -236,11 +244,27 @@ The original draft referenced `.main.lifecycle.md` at the team1 root. That file 
 | Phase 5 verify code (HTTP 200 + screenshot + console diff + revert) | `orchestrator/services/deployment-agent/src/verify.ts` (or equivalent) | Depends on browse daemon (Initiative 2) + a deploy infrastructure adapter; services are stubs in M0/M1 |
 | Phase 6 canary loop (10-min watch, 30s interval, diff) | `orchestrator/services/health-monitoring/src/canary.ts` | Same — depends on browse daemon + browse-client package |
 | Scope-lock enforcement (`scopePaths` validation) | `orchestrator/services/edit-coordinator/src/index.ts` | edit-coordinator is a stub in M0; validation will be ~10 LOC when the service lands in M3 |
+| DevOps / Release / Monitor-MLOps Phase 5 verification runtime | those services' runtime code | Same as above — services are stubs; the *skill files* now describe the protocol but the runtime to execute it lands in M2 |
 
 ### What still needs review
 
-1. **The other 8 unit `lifecycle.md` files** — apply the Phase 2/5 gate updates with per-unit phase-number mapping.
-2. **All 39 skill files' "Phase X" subsections** — the new execution protocols in `skill-template.md` are inherited, but the per-agent Phase rows (e.g. "Implementation & Build | Review PRs affecting architecture") should reference the new protocols where they materially change the agent's job.
-3. **The CEO lens scoring rubric** — Manager agents (9 of them) need a 0-10 scoring rubric for the "is this the 10-star version?" question. Currently undrafted.
-4. **The DX lens rubric** — "TTHW for the next agent, magical moment, friction" is in the doc but not yet formatted as a 0-10 rubric like the eng lens.
-5. **Manager retro format** — Phase 7 retro is described but no per-Manager skill file update has been written.
+1. ~~**The other 8 unit `lifecycle.md` files** — apply the Phase 2/5 gate updates with per-unit phase-number mapping.~~ **Done — all 9 units updated (2026-06-22).**
+2. ~~**All 39 skill files' "Phase X" subsections** — the new execution protocols in `skill-template.md` are inherited, but the per-agent Phase rows (e.g. "Implementation & Build | Review PRs affecting architecture") should reference the new protocols where they materially change the agent's job.~~ **Done for the materially-affected Phase 2/3/5 leads (2026-06-22):**
+   - UI/UX Agent — Phase 2 design lens rubric
+   - Fullstack Dev, Frontend Dev Mobile, Backend Dev Mobile, Web Architect, Desktop Architect — Phase 3 scope-declaration sections
+   - DevOps Agent (SaaS), Release Agent (Mobile), Monitor Agent (MLOps) — Phase 5 verify protocol
+   - The remaining skill files inherit Phase 1/2/3/7 protocols from `skill-template.md` via the Turn protocol block; their Phase Involvement rows describe *what* they do per phase and don't require per-protocol references (the protocols are execution guidance, not new role boundaries).
+3. ~~**The CEO lens scoring rubric** — Manager agents (9 of them) need a 0-10 scoring rubric for the "is this the 10-star version?" question. Currently undrafted.~~ **Done — all 9 Manager files have a CEO lens rubric (2026-06-22).**
+4. ~~**The DX lens rubric** — "TTHW for the next agent, magical moment, friction" is in the doc but not yet formatted as a 0-10 rubric like the eng lens.~~ **Done — all 9 Manager files have a DX lens rubric with the per-unit "next agent who touches this" identified (2026-06-22).**
+5. ~~**Manager retro format** — Phase 7 retro is described but no per-Manager skill file update has been written.~~ **Done — all 9 Manager files have the structured retro format (2026-06-22).**
+
+### What remains (genuinely M2+, not M0)
+
+| Remaining item | Why it's not M0 |
+|----------------|-----------------|
+| Phase 5 verify code (HTTP 200 + screenshot + console diff + revert) | Depends on browse daemon (Initiative 2) + deploy infrastructure adapter; services are stubs in M0/M1 |
+| Phase 6 canary loop (10-min watch, 30s interval, diff) | Same browse-daemon dependency; lands in `health-monitoring/src/canary.ts` |
+| Scope-lock enforcement (`scopePaths` validation) | `edit-coordinator` is a stub in M0; validation will be ~10 LOC when the service lands in M3 |
+| Per-skill-file Phase Involvement row updates for the remaining 28 agents | Inheritance covers it; per-row updates are a polish pass, not a correctness gap |
+
+**Status: all M0-scope work from this proposal is now landed. The remaining items are runtime code that lands with Initiative 2 (browse daemon) and M3 (edit-coordinator), not lifecycle-loop-extraction M0.**

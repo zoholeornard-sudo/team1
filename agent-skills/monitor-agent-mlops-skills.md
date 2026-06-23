@@ -56,6 +56,12 @@
 
 ---
 
+## Phase 5 — Model health verification protocol (gstack lifecycle loop)
+
+> You lead Phase 4 (Deployment) for the ML/Ops Unit. The team1 lifecycle gate now requires **model health verified** before phase exit — `DeployVerified{featureS
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |

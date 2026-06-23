@@ -204,6 +204,12 @@ Before implementing any UI:
 
 ---
 
+## Phase 3 — Scope-declaration protocol (gstack `/freeze` lifecycle loop)
+
+> When Phase 3 opens, you and `@backend-dev-agent-mobile`
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |

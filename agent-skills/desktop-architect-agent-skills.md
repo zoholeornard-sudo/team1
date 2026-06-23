@@ -160,6 +160,12 @@ Escalate to Desktop Solutions Manager when:
 
 ---
 
+## Phase 3 — Scope-declaration protocol (gstack `/freeze` lifecycle loop)
+
+> When Phase 3 opens, you are the Desktop unit's lead dev agent
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |

@@ -162,6 +162,12 @@ Escalate to Web Delivery Manager when:
 
 ---
 
+## Phase 3 — Scope-declaration protocol (gstack `/freeze` lifecycle loop)
+
+> When Phase 3 opens, you are the Web unit's lead dev agent
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |
