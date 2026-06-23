@@ -28,6 +28,9 @@ jobs:
       - name: Type check
         working-directory: orchestrator
         run: bun x tsc --noEmit --project packages/contracts/tsconfig.json || true
+      - name: Run quality-score tests
+        working-directory: orchestrator
+        run: bun test test/quality-score.test.ts
 
   # --- Tier 2: Integration — requires Redis, runs on PRs touching orchestrator/ ---
   integration:
