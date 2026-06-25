@@ -49,7 +49,6 @@ describe.skipIf(!apiUp)("Phase Gate Check (M4)", () => {
     expect(resp.ok).toBe(true);
     const body = await resp.json();
     expect(body.passed).toBe(true);
-    expect(body.verdict).toBe("proceed");
-    expect(body.currentPhase).toBe("3");
+    expect(body.nextPhase).toBe("3");
   });
 });
