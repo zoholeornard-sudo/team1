@@ -5,8 +5,8 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Requirement Gathering** | @data-science-manager + Insight Delivery Agent | Business question clarified, success criteria defined |
-| 2 | **Data Pipeline Setup** | Data Ingestion Agent + Feature Engineering Agent | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
-| 3 | **Experimentation** | Statistical Analysis Agent | A/B test designed, statistical significance reached, **DeployVerified: experiment pipeline healthy in prod (no missing data, no schema drift, dashboard query returns expected cohort sizes)** |
+| 2 | **Data Pipeline Setup** | Data Ingestion Agent + Feature Engineering Agent | Data sources identified, pipeline validated, data quality checks pass |
+| 3 | **Experimentation** | Statistical Analysis Agent | A/B test designed, statistical significance reached |
 | 4 | **Interpretation** | Reporting Agent + @data-science-manager | Findings translated to business impact, recommendations documented |
 | 5 | **Feedback Loop** | Insight Delivery Agent + @data-science-manager | Findings presented, stakeholder feedback gathered, iteration logged |
 

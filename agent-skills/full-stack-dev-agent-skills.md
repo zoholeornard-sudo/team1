@@ -223,12 +223,6 @@ Before implementing any UI:
 
 ---
 
-## Phase 3 — Scope-declaration protocol (gstack `/freeze` lifecycle loop)
-
-> When Phase 3 opens, you are the lead dev agent. You decl
-
----
-
 ## Version History
 
 | Version | Date | Author | Changes |

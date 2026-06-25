@@ -1,22 +1,27 @@
-/**
- * edit-coordinator — sole filesystem writer (ADR-0003)
- * No HTTP port — process-only service (consumes EditIntent stream, applies under lock).
- *
- * Milestone 1: bus boot only. Milestone 3: implement lock + applier.
- */
-import { BusClient } from "@team1/bus-client";
+import { OrchestrationService, ServiceConfig } from "@team1/bus-client";
+import { IntentType } from "@team1/contracts";
 
-const SERVICE_NAME = "edit-coordinator";
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+// Service configuration – can be overridden via env vars
+const config: ServiceConfig = {
+  serviceName: "edit-coordinator",
+  port: Number(process.env.PORT) || 3106,
+  redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
+};
 
-const bus = new BusClient({ redisUrl: REDIS_URL, serviceName: SERVICE_NAME });
+const service = new OrchestrationService(config);
 
-bus.connect().then(() => {
-  console.log("[edit-coordinator] connected to Redis bus — ready for M3 implementation");
-}).catch((err) => {
-  console.warn("[edit-coordinator] Redis connection failed:", err?.message);
+async function main() {
+  await service.initialize();
+
+  // Placeholder: set up bus subscriptions for edit intents
+  const bus = service.getBusClient();
+  await bus.ensureConsumerGroup("edit-coordination", config.serviceName);
+  // TODO: consume and process EditIntent, AcquireCheckout, etc.
+
+  await service.start();
+}
+
+main().catch((err) => {
+  console.error(`[${config.serviceName}] Fatal error:`, err);
   process.exit(1);
 });
-
-// Keep process alive
-setInterval(() => {}, 1000);

@@ -1,5 +1,5 @@
 {
-  "name": "@orchestrator/agent-registry",
+  "name": "@team1/agent-registry",
   "version": "0.1.0",
   "type": "module",
   "scripts": { "dev": "bun src/index.ts" }

@@ -6,9 +6,9 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Data Collection & Prep** | Data Prep Agent | Data sources identified, pipeline validated, quality checks pass |
-| 2 | **Model Development** | Trainer Agent + @mlops-manager | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
+| 2 | **Model Development** | Trainer Agent + @mlops-manager | Model trained, accuracy baseline met |
 | 3 | **Evaluation** | Validation Agent | Bias/fairness checks pass, performance benchmarks met |
-| 4 | **Deployment** | Deployment Agent | Canary → staged rollout, rollback plan ready, **DeployVerified: model serves traffic (HTTP 200 on /predict), prediction-latency SLO met on synthetic load, drift detector active on live stream** |
+| 4 | **Deployment** | Deployment Agent | Canary → staged rollout, rollback plan ready |
 | 5 | **Monitoring & Maintenance** | Monitor Agent + Retrain Scheduler Agent | Drift detection active, retraining pipeline scheduled |
 | 6 | **Iteration** | @mlops-manager | Model performance reviewed, improvement backlog refined |
 

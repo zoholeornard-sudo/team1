@@ -1,5 +1,5 @@
 {
-  "name": "@orchestrator/lifecycle-management",
+  "name": "@team1/lifecycle-management",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -7,6 +7,8 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@team1/contracts": "workspace:*"
+    "@team1/contracts": "workspace:*",
+    "@team1/bus-client": "workspace:*",
+    "express": "^4.18.0"
   }
 }

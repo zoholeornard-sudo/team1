@@ -118,46 +118,6 @@
 
 ---
 
-## Phase 2 — CEO lens review (gstack lifecycle loop)
-
-> When Phase 2 (Integration) opens in this unit, **you run the CEO lens** of the multi-lens review. Eng → Vulnerability Scanner + Security controls owners, design → (often n/a; include for user-facing auth), DX → whoever inherits the control (all dev units). You own the CEO lens. The phase does not exit until all 4 lens scores are recorded and yours is ≥7/10 (or accepted remediation).
-
-**Scoring rubric (0–10; for each, write what a 10 looks like):**
-
-| Dimension | 0 (broken) | 5 (shippable) | 10 (remarkable) |
-|-----------|-----------|---------------|-----------------|
-| Threat coverage | Known gaps, slow response | Coverage of OWASP top 10 | Continuous threat-model-driven; controls are *defended* not just present |
-| Friction cost | Security blocks users | Security is invisible | Security is a *feature* — users feel safer; the control itself is a delight |
-| Compliance posture | Audit-time scramble | Continuous compliance | Audit is a non-event; evidence is auto-collected; zero-prep audits |
-| Incident readiness | P0 takes hours | Documented runbooks | Runbooks are tested quarterly; MTTR is measured and improving |
-| Reversibility | Hard to remove a control | Toggleable in config | Controls are versioned, blue/green-rollout-able; emergency-disable is tested |
-
-**Output:** `PhaseReviewScore{phase: 2, lens: "ceo", score, rationale}` intent + artifact-index entry.
-
-### DX lens — Security & Compliance Unit
-
-> The DX lens is the 4th lens in the Phase 2 multi-lens review.
-
-## Phase 7 — Structured retro format (gstack lifecycle loop)
-
-> When Phase 7 (Audit & Reporting) opens, **you lead the retro**. Save to `00_workspace/working_files/progress/sec-retro-<featureSlug>-<date>.md`. Critical-vuln count + incident MTTR + compliance score are first-class inputs.
-
-**Per-agent breakdown** (one block per agent instance):
-
-```markdown
-### @<handle>-<N>
-- **Shipped:** [scanner deployments, control changes, incident reports, audit artifacts]
-- **Praise:** [1 specific thing done well, anchored in evidence]
-- **Growth:** [1 specific leveling-up suggestion, anchored in data]
-```
-
-**Critical-vuln trend:** count over time; time-to-fix distribution.
-**Incident MTTR by severity:** P0/P1/P2 mean time to resolution; trend.
-**Compliance score:** against target framework; control coverage gap.
-**MBO gap carry-forward:** all `plannedGaps` become mandatory Phase 1 inputs.
-
----
-
 ## Version History
 
 | Version | Date | Changes |

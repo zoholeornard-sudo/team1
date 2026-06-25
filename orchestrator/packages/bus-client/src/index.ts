@@ -70,6 +70,10 @@ export class BusClient {
     PhaseGateCheck: "lifecycle-gating",
     PhaseGatePassed: "lifecycle-gating",
     PhaseGateFailed: "lifecycle-gating",
+    // New intents added to IntentType
+    PhaseReviewScore: "lifecycle-gating",
+    ScopeChangeRequest: "edit-coordination",
+    DeployVerified: "lifecycle-gating",
     // Health
     Heartbeat: "health-monitoring",
     InstanceStalled: "health-monitoring",

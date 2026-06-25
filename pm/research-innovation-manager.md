@@ -108,46 +108,6 @@ INTEGRATION
 
 ---
 
-## Phase 2 — CEO lens review (gstack lifecycle loop)
-
-> When Phase 2 (Planning) opens in this unit, **you run the CEO lens** of the multi-lens review. Eng → Experiment Runner Agent, design → (often n/a; include for prototype surfaces), DX → whoever picks up the finding (Publication + downstream unit). You own the CEO lens. The phase does not exit until all 4 lens scores are recorded and yours is ≥7/10 (or accepted remediation).
-
-**Scoring rubric (0–10; for each, write what a 10 looks like):**
-
-| Dimension | 0 (broken) | 5 (shippable) | 10 (remarkable) |
-|-----------|-----------|---------------|-----------------|
-| Question framing | Vague curiosity | Testable hypothesis | Reframes the field; the question itself is publishable |
-| Rigor | No baseline comparison | Beats naive baseline | Reproducible beats SOTA under honest evaluation; negatives published |
-| Transferability | Stays in this team | Internal writeup | Knowledge transfers cleanly to a production unit; first-use case identified |
-| Cost-to-reproduce | Months of GPU time | Reasonable compute budget | Re-runnable on a laptop; data + seeds are public |
-| Reversibility | One-off experiment | Documented + replicable | Saved as a reusable evaluation harness; "rerun" is one command |
-
-**Output:** `PhaseReviewScore{phase: 2, lens: "ceo", score, rationale}` intent + artifact-index entry.
-
-### DX lens — AI Research Unit
-
-> The DX lens is the 4th lens in the Phase 2 multi-lens review.
-
-## Phase 7 — Structured retro format (gstack lifecycle loop)
-
-> When Phase 7 opens (this unit folds retro into the Integration phase), **you lead the retro**. Save to `00_workspace/working_files/progress/research-retro-<featureSlug>-<date>.md`. Prototype count, publications, knowledge-transfer completeness are first-class inputs.
-
-**Per-agent breakdown** (one block per agent instance):
-
-```markdown
-### @<handle>-<N>
-- **Shipped:** [experiment reports, prototype artifacts, paper drafts, handoff decks]
-- **Praise:** [1 specific thing done well, anchored in evidence]
-- **Growth:** [1 specific leveling-up suggestion, anchored in data]
-```
-
-**Prototype / publication cadence:** count against quarterly/annual targets.
-**Knowledge-transfer completeness:** % of findings successfully integrated into a production unit.
-**Reproducibility audit:** were experiments re-runnable from saved artifacts? rate this.
-**MBO gap carry-forward:** all `plannedGaps` become mandatory Phase 1 inputs.
-
----
-
 ## Version History
 
 | Version | Date | Changes |

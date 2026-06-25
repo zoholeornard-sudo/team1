@@ -10,7 +10,7 @@
       },
     },
     "agent-registry": {
-      "name": "@orchestrator/agent-registry",
+      "name": "@team1/agent-registry",
       "version": "0.1.0",
     },
     "orchestrator-api": {
@@ -43,72 +43,68 @@
       "version": "0.1.0",
     },
     "runtime": {
-      "name": "@orchestrator/runtime",
+      "name": "@team1/runtime",
       "version": "0.1.0",
       "dependencies": {
         "@team1/contracts": "workspace:*",
       },
     },
     "services/edit-coordinator": {
-      "name": "@orchestrator/edit-coordinator",
+      "name": "@team1/edit-coordinator",
       "version": "0.1.0",
       "dependencies": {
+        "@team1/bus-client": "workspace:*",
         "@team1/contracts": "workspace:*",
+        "express": "^4.18.0",
       },
     },
     "services/event-coordination": {
-      "name": "@orchestrator/event-coordination",
+      "name": "@team1/event-coordination",
       "version": "0.1.0",
       "dependencies": {
+        "@team1/bus-client": "workspace:*",
         "@team1/contracts": "workspace:*",
+        "express": "^4.18.0",
       },
     },
     "services/health-monitoring": {
-      "name": "@orchestrator/health-monitoring",
+      "name": "@team1/health-monitoring",
       "version": "0.1.0",
       "dependencies": {
+        "@team1/bus-client": "workspace:*",
         "@team1/contracts": "workspace:*",
+        "express": "^4.18.0",
       },
     },
     "services/lifecycle-management": {
-      "name": "@orchestrator/lifecycle-management",
+      "name": "@team1/lifecycle-management",
       "version": "0.1.0",
       "dependencies": {
+        "@team1/bus-client": "workspace:*",
         "@team1/contracts": "workspace:*",
+        "express": "^4.18.0",
       },
     },
     "services/session-management": {
-      "name": "@orchestrator/session-management",
+      "name": "@team1/session-management",
       "version": "0.1.0",
       "dependencies": {
+        "@team1/bus-client": "workspace:*",
         "@team1/contracts": "workspace:*",
+        "express": "^4.18.0",
       },
     },
     "services/task-management": {
-      "name": "@orchestrator/task-management",
+      "name": "@team1/task-management",
       "version": "0.1.0",
       "dependencies": {
+        "@team1/bus-client": "workspace:*",
         "@team1/contracts": "workspace:*",
+        "express": "^4.18.0",
       },
     },
   },
   "packages": {
-    "@orchestrator/agent-registry": ["@orchestrator/agent-registry@workspace:agent-registry"],
-
-    "@orchestrator/edit-coordinator": ["@orchestrator/edit-coordinator@workspace:services/edit-coordinator"],
-
-    "@orchestrator/event-coordination": ["@orchestrator/event-coordination@workspace:services/event-coordination"],
-
-    "@orchestrator/health-monitoring": ["@orchestrator/health-monitoring@workspace:services/health-monitoring"],
-
-    "@orchestrator/lifecycle-management": ["@orchestrator/lifecycle-management@workspace:services/lifecycle-management"],
-
-    "@orchestrator/runtime": ["@orchestrator/runtime@workspace:runtime"],
-
-    "@orchestrator/session-management": ["@orchestrator/session-management@workspace:services/session-management"],
-
-    "@orchestrator/task-management": ["@orchestrator/task-management@workspace:services/task-management"],
-
     "@redis/bloom": ["@redis/bloom@1.2.0", "", { "peerDependencies": { "@redis/client": "^1.0.0" } }, "sha512-HG2DFjYKbpNmVXsa0keLHp/3leGJz1mjh09f2RLGGLQZzSHpkmZWuwJbAvo3QcRY8p80m5+ZdXZdYOSBLlp7Cg=="],
 
     "@redis/client": ["@redis/client@1.6.1", "", { "dependencies": { "cluster-key-slot": "1.1.2", "generic-pool": "3.9.0", "yallist": "4.0.0" } }, "sha512-/KCsg3xSlR+nCK8/8ZYSknYxvXHwubJrU82F3Lm1Fp6789VQ0/3RJKfsmRXjqfaTA++23CvC3hqmqe/2GEt6Kw=="],
@@ -121,11 +117,27 @@
 
     "@redis/time-series": ["@redis/time-series@1.1.0", "", { "peerDependencies": { "@redis/client": "^1.0.0" } }, "sha512-c1Q99M5ljsIuc4YdaCwfUEXsofakb9c8+Zse2qxTadu8TalLXuAESzLvFAvNVbkmSlvlzIQOLpBCmWI9wTOt+g=="],
 
+    "@team1/agent-registry": ["@team1/agent-registry@workspace:agent-registry"],
+
     "@team1/bus-client": ["@team1/bus-client@workspace:packages/bus-client"],
 
     "@team1/contracts": ["@team1/contracts@workspace:packages/contracts"],
 
+    "@team1/edit-coordinator": ["@team1/edit-coordinator@workspace:services/edit-coordinator"],
+
+    "@team1/event-coordination": ["@team1/event-coordination@workspace:services/event-coordination"],
+
+    "@team1/health-monitoring": ["@team1/health-monitoring@workspace:services/health-monitoring"],
+
+    "@team1/lifecycle-management": ["@team1/lifecycle-management@workspace:services/lifecycle-management"],
+
     "@team1/orchestrator-api": ["@team1/orchestrator-api@workspace:orchestrator-api"],
+
+    "@team1/runtime": ["@team1/runtime@workspace:runtime"],
+
+    "@team1/session-management": ["@team1/session-management@workspace:services/session-management"],
+
+    "@team1/task-management": ["@team1/task-management@workspace:services/task-management"],
 
     "@types/body-parser": ["@types/body-parser@1.19.6", "", { "dependencies": { "@types/connect": "*", "@types/node": "*" } }, "sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g=="],
 
@@ -147,7 +159,7 @@
 
     "@types/range-parser": ["@types/range-parser@1.2.7", "", {}, "sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ=="],
 
-    "@types/send": ["@types/send@0.17.6", "", { "dependencies": { "@types/mime": "^1", "@types/node": "*" } }, "sha512-Uqt8rPBE8SY0RK8JB1EzVOIZ32uqy8HwdxCnoCOsYrvnswqmFZ/k+9Ikidlk/ImhsdvBsloHbAlewb2IEBV/Og=="],
+    "@types/send": ["@types/send@1.2.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ=="],
 
     "@types/serve-static": ["@types/serve-static@1.15.10", "", { "dependencies": { "@types/http-errors": "*", "@types/node": "*", "@types/send": "<1" } }, "sha512-tRs1dB+g8Itk72rlSI2ZrW6vZg0YrLI81iQSTkMmOqnqCaNr/8Ek4VwWcN5vZgCYWbg/JJSGBlUaYGAOP73qBw=="],
 
@@ -312,6 +324,8 @@
     "@types/send/@types/node": ["@types/node@26.0.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA=="],
 
     "@types/serve-static/@types/node": ["@types/node@26.0.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA=="],
+
+    "@types/serve-static/@types/send": ["@types/send@0.17.6", "", { "dependencies": { "@types/mime": "^1", "@types/node": "*" } }, "sha512-Uqt8rPBE8SY0RK8JB1EzVOIZ32uqy8HwdxCnoCOsYrvnswqmFZ/k+9Ikidlk/ImhsdvBsloHbAlewb2IEBV/Og=="],
 
     "bun-types/@types/node": ["@types/node@26.0.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA=="],
 

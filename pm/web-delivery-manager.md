@@ -91,46 +91,6 @@ IF LCP > 2.5s:
 
 ---
 
-## Phase 2 — CEO lens review (gstack lifecycle loop)
-
-> When Phase 2 (Architecture & Design) opens in this unit, **you run the CEO lens** of the multi-lens review. Eng → Web Architect Agent, design → UI/UX Agent, DX → next-agent who'll touch the code. You own the CEO lens. The phase does not exit until all 4 lens scores are recorded and yours is ≥7/10 (or accepted remediation).
-
-**Scoring rubric (0–10; for each, write what a 10 looks like):**
-
-| Dimension | 0 (broken) | 5 (shippable) | 10 (remarkable) |
-|-----------|-----------|---------------|-----------------|
-| Page experience | Loads in >5s, janky | <2s TTFB, smooth scroll | Sub-second, animates with intent, feels alive |
-| Accessibility | Fails WCAG | Meets WCAG 2.1 AA | Best-in-class — screen-reader users feel prioritized, not accommodated |
-| SEO surface | No structured data, missing meta | Standard meta + sitemap | Earns rich results, ranks for unbranded queries |
-| Browser matrix | Works in 1 browser | Works in declared matrix | Works identically across browsers, including old ones |
-| Reversibility | Locked-in framework choice | Some escape hatches | CSS/JS island approach; framework is replaceable |
-
-**Output:** `PhaseReviewScore{phase: 2, lens: "ceo", score, rationale}` intent + artifact-index entry.
-
-### DX lens — Web Unit
-
-> The DX lens is the 4th lens in the Phase 2 multi-lens review. The DX lens reviewer for the Web unit is the Web Architect Agent (Phase 3 lead — self-review of DX for the next implementation touch).
-
-## Phase 7 — Structured retro format (gstack lifecycle loop)
-
-> When Phase 7 (Analysis & Feedback) opens, **you lead the retro**. Save to `00_workspace/working_files/progress/web-retro-<featureSlug>-<date>.md`. RUM data + Lighthouse trend deltas are first-class inputs.
-
-**Per-agent breakdown** (one block per agent instance):
-
-```markdown
-### @<handle>-<N>
-- **Shipped:** [commits, Lighthouse deltas, Storybook stories, a11y audits]
-- **Praise:** [1 specific thing done well, anchored in evidence]
-- **Growth:** [1 specific leveling-up suggestion, anchored in data]
-```
-
-**Lighthouse delta:** before/after scores across performance, accessibility, best-practices, SEO.
-**Core Web Vitals trend:** LCP, CLS, INP p75 movement across the feature cycle.
-**Browser regression count:** per-browser test failures introduced vs. fixed.
-**MBO gap carry-forward:** all `plannedGaps` become mandatory Phase 1 inputs.
-
----
-
 ## Version History
 
 | Version | Date | Changes |

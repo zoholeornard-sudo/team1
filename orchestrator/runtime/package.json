@@ -1,5 +1,5 @@
 {
-  "name": "@orchestrator/runtime",
+  "name": "@team1/runtime",
   "version": "0.1.0",
   "type": "module",
   "scripts": { "dev": "bun src/index.ts" },

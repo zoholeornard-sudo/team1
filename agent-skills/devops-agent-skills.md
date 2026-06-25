@@ -286,12 +286,6 @@ Every service must have:
 
 ---
 
-## Phase 5 — Verify-after-deploy protocol (gstack lifecycle loop)
-
-> You lead Phase 5 (Deployment). The team1 lifecycle gate now requires **production health verified** before phase exit — n
-
----
-
 ## Version History
 
 | Version | Date | Author | Changes |

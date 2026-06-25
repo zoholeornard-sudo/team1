@@ -5,6 +5,14 @@
   },
   "references": [
     { "path": "packages/contracts" },
-    { "path": "packages/bus-client" }
+    { "path": "packages/bus-client" },
+    { "path": "orchestrator-api" },
+    { "path": "services/edit-coordinator" },
+    { "path": "services/event-coordination" },
+    { "path": "services/lifecycle-management" },
+    { "path": "services/health-monitoring" },
+    { "path": "services/session-management" },
+    { "path": "services/task-management" },
+    { "path": "runtime" }
   ]
 }

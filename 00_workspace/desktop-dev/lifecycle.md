@@ -6,10 +6,10 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Requirements & Design** | @desktop-solutions-manager + Desktop Architect Agent | Scope decided, requirements documented |
-| 2 | **Prototype & Review** | UI/UX Agent + Desktop Architect Agent | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
+| 2 | **Prototype & Review** | UI/UX Agent + Desktop Architect Agent | Prototype validated, tech stack chosen |
 | 3 | **Implementation** | Dev Agents | Feature complete, installer tested |
 | 4 | **Testing** | QA Agent | Platform coverage (Win/Mac/Linux) passed, crash rate baseline |
-| 5 | **Packaging & Release** | Release Agent | Auto-update pipeline ready, installer signed, **DeployVerified: signed-installer smoke test pass on Win/Mac/Linux, auto-update check fires from prior version** |
+| 5 | **Packaging & Release** | Release Agent | Auto-update pipeline ready, installer signed |
 | 6 | **Monitoring** | Crash Report Agent + @desktop-solutions-manager | Crash MTTR <5min, update adoption >90% |
 | 7 | **Iteration** | @desktop-solutions-manager | User feedback integrated, crash trends reviewed |
 

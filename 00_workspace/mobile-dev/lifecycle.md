@@ -6,10 +6,10 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Planning & Requirements** | @mobile-platform-manager + UI/UX Agent | Strategy approved, use cases defined |
-| 2 | **Design & Prototyping** | UI/UX Agent | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
+| 2 | **Design & Prototyping** | UI/UX Agent | Prototypes validated, design signed off |
 | 3 | **Implementation** | Frontend + Backend Dev Agents | Feature complete, CI cycle <2hr |
 | 4 | **Testing** | QA Agent | Device matrix passed, performance benchmarks met |
-| 5 | **Deployment** | Release Agent | App store submission ready, weekly cadence, **DeployVerified: TestFlight build healthy, crash-rate baseline captured, store listing live** |
+| 5 | **Deployment** | Release Agent | App store submission ready, weekly cadence |
 | 6 | **Monitoring & Feedback** | @mobile-platform-manager | Crash rate <0.1%, store rating tracking |
 | 7 | **Iteration** | @mobile-platform-manager | User feedback integrated, backlog refined |
 

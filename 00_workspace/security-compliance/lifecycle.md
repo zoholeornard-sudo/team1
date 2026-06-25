@@ -6,8 +6,8 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Policy Definition** | @security-compliance-manager + Policy Auditor Agent | Policies documented, standards defined, baseline assessment complete |
-| 2 | **Integration** | Vulnerability Scanner Agent + @security-compliance-manager | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
-| 3 | **Monitoring** | Threat Intelligence Agent + Vulnerability Scanner Agent | Continuous scan active, threat feed connected, dashboards live, **DeployVerified: first scheduled scan completed cleanly, synthetic-injection alert fires within SLA** |
+| 2 | **Integration** | Vulnerability Scanner Agent + @security-compliance-manager | Security controls implemented, scanners deployed |
+| 3 | **Monitoring** | Threat Intelligence Agent + Vulnerability Scanner Agent | Continuous scan active, threat feed connected, dashboards live |
 | 4 | **Response** | Incident Response Agent | Incident runbooks tested, response time <1hr |
 | 5 | **Audit & Reporting** | Reporting Agent + @security-compliance-manager | Compliance report generated, audit trail complete |
 

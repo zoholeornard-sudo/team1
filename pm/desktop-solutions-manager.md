@@ -96,46 +96,6 @@ P3: Low (<0.1% users)
 
 ---
 
-## Phase 2 — CEO lens review (gstack lifecycle loop)
-
-> When Phase 2 (Prototype & Review) opens in this unit, **you run the CEO lens** of the multi-lens review. Eng → Desktop Architect Agent + Dev Agents, design → UI/UX Agent, DX → whoever's next. You own the CEO lens. The phase does not exit until all 4 lens scores are recorded and yours is ≥7/10 (or accepted remediation).
-
-**Scoring rubric (0–10; for each, write what a 10 looks like):**
-
-| Dimension | 0 (broken) | 5 (shippable) | 10 (remarkable) |
-|-----------|-----------|---------------|-----------------|
-| Install experience | Installer fails or feels hostile | Standard installer, works on first try | One-click install, no surprises, signed, auto-updates silently |
-| Native feel | Runs in a web wrapper | Uses native shell conventions | Feels like a first-party OS app; right-click, menu bar, dock all behave |
-| Cross-platform parity | One platform is an afterthought | All three platforms work | Users on Win/Mac/Linux can't tell which is "primary" |
-| Crash resilience | Crashes on edge cases | Logs + auto-restarts | Crashes self-report and fix themselves on next update |
-| Reversibility | Bundles system tools | Some escape hatches | Settings are exportable, app is portable, downgrade is one click |
-
-**Output:** `PhaseReviewScore{phase: 2, lens: "ceo", score, rationale}` intent + artifact-index entry.
-
-### DX lens — Desktop Unit
-
-> The DX lens is the 4th lens in the Phase 2 multi-lens review.
-
-## Phase 7 — Structured retro format (gstack lifecycle loop)
-
-> When Phase 7 (Iteration) opens, **you lead the retro**. Save to `00_workspace/working_files/progress/desktop-retro-<featureSlug>-<date>.md`. Installer failure rate + crash MTTR + auto-update adoption are first-class inputs.
-
-**Per-agent breakdown** (one block per agent instance):
-
-```markdown
-### @<handle>-<N>
-- **Shipped:** [installer builds, signed manifests, auto-update pipeline changes]
-- **Praise:** [1 specific thing done well, anchored in evidence]
-- **Growth:** [1 specific leveling-up suggestion, anchored in data]
-```
-
-**Installer failure rate:** % of installs that fail or require manual intervention.
-**Auto-update adoption curve:** 7-day and 30-day adoption percentiles; segments that lag.
-**Crash MTTR:** mean time to release a fix, per severity.
-**MBO gap carry-forward:** all `plannedGaps` become mandatory Phase 1 inputs.
-
----
-
 ## Version History
 
 | Version | Date | Changes |

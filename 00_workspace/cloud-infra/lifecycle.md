@@ -6,8 +6,8 @@
 | # | Phase | Owner | Gate |
 |---|-------|-------|------|
 | 1 | **Planning** | @cloud-ops-manager + Infra Architect Agent | Architecture decision documented, requirements gathered |
-| 2 | **Design & IaC Generation** | IaC Agent + Infra Architect Agent | **Multi-lens review: CEO + Eng + Design + DX lenses all ≥7/10** *(or accepted remediation; see `lifecycle-loop-extraction.md`)* |
-| 3 | **Provisioning & Validation** | Provisioning Agent | Environments provisioned, validation tests pass, **DeployVerified: provisioned envs health-checked (compute reachable, DB up, networking open, IaC plan/apply diff clean)** |
+| 2 | **Design & IaC Generation** | IaC Agent + Infra Architect Agent | IaC templates written, code review passed |
+| 3 | **Provisioning & Validation** | Provisioning Agent | Environments provisioned, validation tests pass |
 | 4 | **Monitoring** | Drift Detector Agent + Cost Analyst Agent | Dashboards live, drift detection active, cost baseline set |
 | 5 | **Optimization** | Cost Analyst Agent + @cloud-ops-manager | Rightsizing executed, reserved instances purchased |
 | 6 | **Incident Response** | @cloud-ops-manager + Security Agent | P0/P1 runbooks tested, DR plan documented |
