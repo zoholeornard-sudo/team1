@@ -35,7 +35,10 @@ async function applyBatch(branch: string, path: string, content: string) {
 describe("M3 branch-only work coordination", () => {
   beforeAll(async () => {
     await execa("redis-cli", ["DEL", "locks:repo:global"]).catch(() => {});
+    await execa("git", ["-C", REPO_ROOT, "stash"]).catch(() => {});
     await execa("git", ["-C", REPO_ROOT, "checkout", "main"]).catch(() => {});
+    await execa("git", ["-C", REPO_ROOT, "branch", "-D", "feature/m3-test"]).catch(() => {});
+    await execa("git", ["-C", REPO_ROOT, "branch", "-D", "feature/m3-test-b"]).catch(() => {});
     await execa("git", ["-C", REPO_ROOT, "branch", "feature/m3-test"]).catch(() => {});
     await execa("git", ["-C", REPO_ROOT, "branch", "feature/m3-test-b"]).catch(() => {});
     await execa("git", ["-C", REPO_ROOT, "checkout", "main"]).catch(() => {});

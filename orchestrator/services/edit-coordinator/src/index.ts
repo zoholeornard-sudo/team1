@@ -18,7 +18,7 @@ const SERVICE_NAME = "edit-coordinator";
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const REPO_ROOT = process.env.REPO_ROOT || process.cwd();
 const LOCK_KEY = "locks:repo:global";
-const LOCK_TTL_MS = 5000;
+const LOCK_TTL_MS = 10000;
 
 const redis = createClient({ url: REDIS_URL });
 const bus = new BusClient({ redisUrl: REDIS_URL, serviceName: SERVICE_NAME });

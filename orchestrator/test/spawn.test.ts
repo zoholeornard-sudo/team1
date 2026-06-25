@@ -89,6 +89,10 @@ describe.skipIf(!apiUp)("Spawn & Assign (M2 — requires running services)", () 
         }
       }
     } catch {}
+    // Pop stash from beforeAll
+    try {
+      await $`git -C ${REPO_ROOT} stash pop 2>/dev/null || true`;
+    } catch {}
     // Commit the cleanup
     try {
       await $`git -C ${REPO_ROOT} add -A && git -C ${REPO_ROOT} commit -m "test: cleanup M2 spawn test artifacts (${TEST_SLUG})" --no-verify 2>/dev/null || true`;
