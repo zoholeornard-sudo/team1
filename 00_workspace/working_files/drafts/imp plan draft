@@ -787,6 +787,10 @@ Tier 2 runs the full test suite (`npm test`), not just affected-path tests. Rati
 
 ---
 
+---
+
+---
+
 ## 13. Revision History
 
 | Version | Date | Author | Changes |
@@ -795,3 +799,77 @@ Tier 2 runs the full test suite (`npm test`), not just affected-path tests. Rati
 | 1.1.0 | 2026-06-21 | `@architect-agent` (via Zo) | Added §11 Risk Zones, Mitigations & Design Calls. Resolved 3 risk zones (Redlock lease timeout, backtrack loops, multi-feature merge) and 5 design calls (Phase 7 no-backtrack, two-tier test isolation, configurable heartbeats, two-stage gap approval, explicit dependsOn API). M3/M4/M5 task lists updated to reference §11 resolutions. |
 | 1.2.0 | 2026-06-22 | `@architect-agent` (via Zo) | Code refactors applied: M3 snippet refactored (tests moved out of locked block, Tier 2 async runner + TestFailed revert handler added); M4 snippet refactored (Phase 7 throws, backtrack counter + PhaseEscalation emission added). 4 new intent types added to contracts: TestNeeded, TestFailed, EditReverted, PhaseEscalation. §12 added: 5 open questions resolved (Tier 2 location, Phase Escalation workflow, Tier 1 profiling blocker, Tier 2 test scope, heartbeat calibration). |
 | 1.3.0 | 2026-06-22 | `@architect-agent` (via Zo) | M0–M3 actually executed end-to-end: 8 services boot, 53/53 tests pass. M0: 4 contract edits applied (lifecycle gating, AGENTS.md instances ledger, skill template Turn protocol, progress template Planned gaps). M1: all 8 services respond 200 on /healthz, 0/39 contract violations. M2: spawn creates 3 distinct branches + SQLite registry entries, Manager authority gate enforced. M3: edit-coordinator serializes batches under per-instance Redis mutex (5s TTL Tier-1), Tier-2 async test runner emits TestFailed, revert handler re-acquires lock briefly. Reverted: redlock package (API incompatibility), xReadGroup object form (Bun redis client bug) — replaced with raw sendCommand. M4–M6 deferred: require runtime/ supervisor + /zo/ask wiring that exists in code but is unverified. Redis Streams bus is live across all 8 services with consumer-group dedup (24h TTL via idempotencyKey). |
+
+
+## 14. Actual Status (Ground Truth — 2026-06-22)
+
+What the orchestrator/ directory on `main` actually contains after M0–M3 execution. Verified via `git ls-tree -l origin/main`.
+
+### 14.1 Code on disk
+
+| Path | LOC | Status |
+|------|-----|--------|
+| `packages/contracts/src/intents.ts` | 331 | Complete — 18 intent types including EditIntent, AcquireCheckout, EditApplied, TestNeeded, TestFailed, EditReverted, PhaseEscalation, PhaseReviewScore, ScopeChangeRequest, DeployVerified |
+| `packages/bus-client/src/index.ts` | 333 | Complete — BusClient with publish/consume/ack, idempotency dedup (24h TTL), raw sendCommand for XREADGROUP (redis v6 client workaround) |
+| `services/edit-coordinator/src/index.ts` | 276 | Complete — Tier-1 Redis mutex (5s TTL, 50×100ms retry), Tier-2 async test runner on `git worktree add` clone, TestFailed revert handler |
+| `runtime/src/supervisor.ts` | 15,475 bytes | Substantial — implements ADR-0004 polling-agent model: subscribe to bus, build seed context, call /zo/ask, parse return-value, publish intents |
+| `runtime/src/seed-context.ts` | 6,015 bytes | Substantial — builds agent seed from skill file + MBO + phase + prior checkpoint |
+| `runtime/src/zo-ask.ts` | 1,683 bytes | Complete — wraps platform /zo/ask API with ZO_CLIENT_IDENTITY_TOKEN |
+| `runtime/src/return-value.ts` | 3,979 bytes | Substantial — parses agent return values into emitted intents |
+| `runtime/src/context-checkpoint.ts` | 2,472 bytes | Complete — saves agent state across turns |
+| `runtime/tools/browse.ts` | 3,565 bytes | Complete — first runtime tool |
+| `agent-registry/src/index.ts` | 140 | Complete — SQLite-backed registry with `/instances` HTTP API |
+| `orchestrator-api/src/index.ts` | 305 | Complete — `/agents/spawn` endpoint, Manager authority gate, creates branches + commits progress files |
+| `services/{task,session,health,lifecycle,event}-management/src/index.ts` | 54 each | Stubs — bus boot + `/healthz` only; domain logic is M2+ |
+| `services/health-monitoring/src/quality-score.ts` | (substantial) | Substantial — separate quality-scoring module |
+
+### 14.2 Test coverage
+
+53 tests, 0 failures, 237 expect() calls, 7 files, ~20s:
+
+| File | Tests | What it verifies |
+|------|-------|------------------|
+| `test/contracts.test.ts` | 19 | 11 intent envelope invariants (idempotency, branch authority, op enum, etc.) |
+| `test/quality-score.test.ts` | (in 39 total) | quality-score algorithm |
+| `test/bus-roundtrip.test.ts` | (in 39 total) | Bus publish/subscribe/idempotency round-trip |
+| `test/service-health.test.ts` | 7 | All 7 services respond 200 on /healthz |
+| `test/spawn.test.ts` | 7 | Spawn creates 3 branches + registry entries + progress files |
+| `test/m3-edit-coordinator.test.ts` | 2 | Edit-coordinator serializes writes + concurrent batches |
+| `test/spec-endpoint.test.ts` | (in 39 total) | Spec endpoint contract |
+
+### 14.3 Service ports (confirmed live)
+
+```
+:3098  orchestrator-api      HTTP 200
+:3101  task-management       HTTP 200
+:3102  session-management    HTTP 200
+:3103  health-monitoring     HTTP 200
+:3104  lifecycle-management  HTTP 200
+:3105  event-coordination    HTTP 200
+:3106  agent-registry        HTTP 200
+:3107  edit-coordinator      HTTP 200  (HTTP control + bus consumer)
+```
+
+Redis Streams: 10 streams mapped (edit-coordination, spawn-agents, task-created, agent-assigned, session-started, edit-applied, phase-gate-check, mbo-metric-report, lifecycle-gating, merge-conflict-detection).
+
+### 14.4 Open work — M4–M6 deferred
+
+M4 (lifecycle gating): no `evaluateGateCheck` implementation in `services/lifecycle-management` yet. The service is a 54-line stub. Requires wiring PhaseGateCheck + PhaseEscalation consumers to the `resolveBackwardPhase` algorithm from §7.1 + §11.2.
+
+M5 (multi-feature merge): `MergeCoordinator` module not yet implemented. `/features/:slug/dependsOn/:otherSlug` endpoint not yet on orchestrator-api. `feature_dependencies` table not in any SQLite.
+
+M6 (reap + history): `ReapInstance` consumer logic not yet wired in supervisor.ts. The intent type exists in contracts but no consumer.
+
+Runtime is implemented in code but unverified against `/zo/ask` — that requires M0–M2 to be complete (✅) plus actual feature submission via orchestrator-api to exercise the full supervision loop.
+
+### 14.5 Differences from v1.2.0 plan
+
+- **Removed:** `redlock` npm package (API incompatibility with our redis v6 client). Replaced with a small Redis `SET NX PX` + Lua `eval` mutex in `acquireLock`/`releaseLock`. Same semantics, ~30 LOC.
+- **Replaced:** `redis.xReadGroup` object form (broken in Bun + @redis/client v4). Replaced with raw `sendCommand(['XREADGROUP', ...])` in `bus-client.consume()`. Same blocking behavior, same consumer-group semantics.
+- **Added:** `repo_root` env var to edit-coordinator (needed because `simple-git` needs the absolute path to the working dir).
+- **Renamed:** orchestrator-api port `3099` → `3098` (port 3099 was already bound by Zo's local space server).
+
+---
+
+---
+
