@@ -7,6 +7,7 @@
  */
 import { BusClient } from "@team1/bus-client";
 import { evaluateGate, type GateEvaluation } from "./gate-evaluator.js";
+import { MergeCoordinator } from "./merge-coordinator.js";
 
 const PORT = Number(process.env.PORT) || 3104;
 const SERVICE_NAME = "lifecycle-management";
@@ -31,6 +32,7 @@ interface PhaseState {
 }
 
 const phaseStates = new Map<string, PhaseState>();
+const mergeCoordinator = new MergeCoordinator(phaseStates);
 
 const PHASE_ORDER = ["1", "2", "3", "4", "5", "6", "7"];
 
@@ -136,7 +138,42 @@ const server = Bun.serve({
       }
     }
 
-    return new Response("Not found", { status: 404 });
+    // --- M5: Multi-feature merge coordination ---
+
+    // POST /features/:slug/dependsOn/:otherSlug — declare dependency (Manager-authority)
+    const depMatch = path.match(/^\/features\/([^/]+)\/dependsOn\/([^/]+)$/);
+    if (depMatch && req.method === "POST") {
+      const [, feature, dependsOn] = depMatch;
+      const managerToken = req.headers.get("x-manager-token");
+      if (!managerToken) {
+        return Response.json({ error: "Manager token required" }, { status: 403 });
+      }
+      const result = mergeCoordinator.declareDependency(feature, dependsOn, managerToken);
+      if (!result.ok) {
+        return Response.json({ error: result.reason }, { status: 400 });
+      }
+      return Response.json({ ok: true, feature, dependsOn });
+    }
+
+    // GET /features/:slug/dependencies — list dependencies
+    const listDepMatch = path.match(/^\/features\/([^/]+)\/dependencies$/);
+    if (listDepMatch && req.method === "GET") {
+      const [, feature] = listDepMatch;
+      return Response.json({ feature, dependencies: mergeCoordinator.getDependencies(feature) });
+    }
+
+    // GET /features/:slug/can-deploy — Phase 5 entry gate check
+    const canDeployMatch = path.match(/^\/features\/([^/]+)\/can-deploy$/);
+    if (canDeployMatch && req.method === "GET") {
+      const [, feature] = canDeployMatch;
+      const result = mergeCoordinator.canEnterPhase5(feature);
+      return Response.json({ feature, canDeploy: result.ok, blockedBy: result.blockedBy });
+    }
+
+    // GET /features/dependencies — all dependencies (debug)
+    if (path === "/features/dependencies" && req.method === "GET") {
+      return Response.json({ dependencies: mergeCoordinator.exportAll() });
+    }    return new Response("Not found", { status: 404 });
   },
 });
 
