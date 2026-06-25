@@ -1,0 +1,374 @@
+---
+version: 1.2
+lastUpdated: 2026-06-25
+author: team1
+description: >
+  Single source of truth for the team1 platform lifecycle.
+  Defines the 7 phases, per-unit MBO targets, and per-unit phase involvement.
+  Markdown documents (e.g., .main.lifecycle.md) should be generated from this file.
+---
+
+phases:
+  - number: 1
+    name: Planning & Requirements
+    purpose: Validate feasibility, define scope, set MBO-aligned targets.
+    exitCriteria:
+      artifact: Scope doc approved
+      mbo: Metric targets loaded from assignments/<project>.json with baselines recorded
+  - number: 2
+    name: Architecture & Design
+    purpose: Produce design docs, ADRs, diagrams, data models.
+    exitCriteria:
+      artifact: ARB sign-off, NFRs shown achievable
+      mbo: architecture-review-coverage MBO on target (100% of major changes)
+  - number: 3
+    name: Implementation & Build
+    purpose: Build features/services per design.
+    exitCriteria:
+      artifact: Code merged via PR, unit/integration tests green
+      mbo: technical-debt-ratio MBO on target (<15%) or planned-gap declaration
+  - number: 4
+    name: Testing & QA
+    purpose: Functional, performance, security, accessibility validation.
+    exitCriteria:
+      artifact: QA gate passed
+      mbo: bug-escape-rate MBO on target (<5%) or accepted remediation
+  - number: 5
+    name: Deployment & Release
+    purpose: Ship to production via CI/CD.
+    exitCriteria:
+      artifact: Deployment success, release notes published
+      mbo: deployment-success-rate MBO on target (>99%)
+  - number: 6
+    name: Monitoring & Incident Response
+    purpose: Observe SLOs; respond to incidents.
+    exitCriteria:
+      artifact: SLOs observed
+      mbo: owning unit's MBO metrics within target; off-target triggers RemediationIntent
+  - number: 7
+    name: Analysis & Feedback
+    purpose: Postmortems, metric review, learnings.
+    exitCriteria:
+      artifact: Retrospective complete, improvements backlogged
+      mbo: MBO gaps from phases 3-6 are mandatory inputs to next cycle's Phase 1
+
+alignedRule:
+  description: MBO miss is resolved by exactly one of three paths
+  paths:
+    - key: a
+      name: Remediate in-phase
+      description: The agent closes the gap before the phase exits.
+    - key: b
+      name: Backward intent
+      description: lifecycle-management emits a RemediationIntent to the relevant earlier phase.
+    - key: c
+      name: Planned-gap declaration
+      description: >
+        The agent declares the gap as a per-phase field in its progress report.
+        Default-available, not an escalation. Declared gaps are reviewed by the Manager at Phase 7.
+        Accepted gaps become mandatory Phase-1 inputs next cycle.
+
+units:
+  - name: SaaS Development Unit
+    mbo:
+      targets:
+        - name: uptime
+          value: 99.9%
+        - name: apiLatency
+          value: sub-200ms under load
+    phases:
+      planning:
+        lead: product-manager-agent
+        support: architect-agent
+      architecture:
+        lead: architect-agent
+        support: [fullstack-dev, devops-agent]
+      implementation:
+        lead: fullstack-dev
+        support: [ui-ux-agent, devops-agent]
+      testing:
+        lead: qa-agent
+        support: fullstack-dev
+      deployment:
+        lead: devops-agent
+        support: architect-agent
+      monitoring:
+        lead: devops-agent
+        support: [qa-agent, architect-agent]
+      analysis:
+        lead: product-manager-agent
+        support: all
+
+  - name: Mobile Development Unit
+    mbo:
+      targets:
+        - name: ciCycle
+          value: <2h
+        - name: coldLaunch
+          value: <1s
+        - name: appRating
+          value: 4.5+
+    phases:
+      planning:
+        lead: mobile-architect-agent
+        support: [frontend-dev-mobile, backend-dev-mobile]
+      architecture:
+        lead: mobile-architect-agent
+        support: release-agent-mobile
+      implementation:
+        lead: [frontend-dev-mobile, backend-dev-mobile]
+        support: mobile-architect-agent
+      testing:
+        lead: release-agent-mobile
+        support: [frontend-dev-mobile, backend-dev-mobile]
+      deployment:
+        lead: release-agent-mobile
+        support: mobile-architect-agent
+      monitoring:
+        lead: release-agent-mobile
+        support: mobile-architect-agent
+      analysis:
+        lead: mobile-architect-agent
+        support: all
+
+  - name: Web Development Unit
+    mbo:
+      targets:
+        - name: ttfb
+          value: <1s @ 100k users
+        - name: accessibility
+          value: WCAG 2.1 AA
+        - name: seo
+          value: >90
+    phases:
+      all:
+        lead: web-architect-agent
+        note: solo unit; coordinates with SaaS/Cloud
+
+  - name: Desktop Development Unit
+    mbo:
+      targets:
+        - name: installerFailures
+          value: zero
+        - name: crashMttr
+          value: <5min
+    phases:
+      all:
+        lead: desktop-architect-agent
+        note: solo unit; coordinates with SaaS/Cloud
+
+  - name: Cloud Infrastructure Unit
+    mbo:
+      targets:
+        - name: costUtilization
+          value: 95%
+        - name: provisioningTime
+          value: <30s
+    phases:
+      planning:
+        lead: infra-architect-agent
+        support: cost-analyst-agent
+      architecture:
+        lead: infra-architect-agent
+        support: [iac-agent, security-agent]
+      implementation:
+        lead: iac-agent
+        support: provisioning-agent
+      testing:
+        lead: provisioning-agent
+        support: iac-agent
+      deployment:
+        lead: provisioning-agent
+        support: iac-agent
+      monitoring:
+        lead: drift-detector-agent
+        support: [cost-analyst-agent, security-agent]
+      analysis:
+        lead: cost-analyst-agent
+        support: infra-architect-agent
+
+  - name: ML/Ops Unit
+    mbo:
+      targets:
+        - name: driftFalsePositives
+          value: <0.5%
+        - name: deploymentTime
+          value: <15min
+    phases:
+      planning:
+        lead: data-prep-agent
+        support: trainer-agent
+      dataPrep:
+        lead: data-prep-agent
+        support: feature-engineering-agent
+      training:
+        lead: trainer-agent
+        support: validation-agent
+      validation:
+        lead: validation-agent
+        support: metric-analyzer-agent
+      deployment:
+        lead: deployment-agent-mlops
+        support: monitor-agent-mlops
+      monitoring:
+        lead: monitor-agent-mlops
+        support: retrain-scheduler-agent
+      retrainLoop:
+        lead: retrain-scheduler-agent
+        support: trainer-agent
+        note: feeds back to Training
+
+  - name: AI Research Unit
+    mbo:
+      targets:
+        - name: prototypes
+          value: 4/quarter
+        - name: publications
+          value: 2/year
+    phases:
+      literatureReview:
+        lead: lit-review-agent
+        support: collaboration-agent
+      experimentDesign:
+        lead: experiment-runner-agent
+        support: metric-analyzer-agent
+      experimentation:
+        lead: experiment-runner-agent
+        support: metric-analyzer-agent
+      analysis:
+        lead: metric-analyzer-agent
+        support: publication-agent
+      publication:
+        lead: publication-agent
+        support: collaboration-agent
+      outreach:
+        lead: collaboration-agent
+        support: publication-agent
+
+  - name: Data Science Unit
+    mbo:
+      targets:
+        - name: insights
+          value: 5 actionable/month
+        - name: abLift
+          value: >10%
+    phases:
+      dataAcquisition:
+        lead: data-ingestion-agent
+        support: []
+      featureWork:
+        lead: feature-engineering-agent
+        support: data-ingestion-agent
+      analysis:
+        lead: stats-agent
+        support: feature-engineering-agent
+      reporting:
+        lead: reporting-agent-ds
+        support: insight-delivery-agent
+      delivery:
+        lead: insight-delivery-agent
+        support: reporting-agent-ds
+
+  - name: Security & Compliance Unit
+    mbo:
+      targets:
+        - name: criticalVulns
+          value: zero
+        - name: incidentResponse
+          value: <1hr
+    phases:
+      scanning:
+        lead: vuln-scanner-agent
+        support: []
+      audit:
+        lead: policy-auditor-agent
+        support: threat-intelligence-agent
+      threatIntel:
+        lead: threat-intelligence-agent
+        support: policy-auditor-agent
+      response:
+        lead: incident-response-agent
+        support: vuln-scanner-agent
+      reporting:
+        lead: reporting-agent-sec
+        support: incident-response-agent
+
+artifactTypes:
+  - id: scope-doc
+    name: Scope doc
+    storedIn: 00_workspace/working_files/drafts/
+    producedBy: Product Manager Agent
+    phases: [1]
+  - id: design-doc
+    name: Design doc / ADR
+    storedIn: 00_workspace/working_files/drafts/
+    producedBy: Architect Agent
+    phases: [2]
+  - id: pull-request
+    name: Pull request
+    storedIn: "git (branch feature/<slug>-<handle>-N)"
+    producedBy: Dev agents
+    phases: [3]
+  - id: test-report
+    name: Test report
+    storedIn: 00_workspace/working_files/test-reports/
+    producedBy: QA / Provisioning / Release Agent
+    phases: [4]
+  - id: release-notes
+    name: Release notes
+    storedIn: 00_workspace/working_files/releases/
+    producedBy: DevOps / Release Agent
+    phases: [5]
+  - id: slo-dashboard
+    name: SLO dashboard snapshot
+    storedIn: 00_workspace/working_files/monitoring/
+    producedBy: DevOps / Monitor / Drift Detector
+    phases: [6]
+  - id: incident-report
+    name: Incident report
+    storedIn: 00_workspace/working_files/incidents/
+    producedBy: Incident Response Agent
+    phases: [6]
+  - id: retrospective
+    name: Retrospective
+    storedIn: 00_workspace/working_files/retrospectives/
+    producedBy: Product Manager / Mobile Architect / Cost Analyst
+    phases: [7]
+  - id: capacity-plan
+    name: Capacity plan
+    storedIn: 00_workspace/working_files/capacity/
+    producedBy: Cloud Operations Manager
+    phases: [1, 6]
+  - id: model-card
+    name: Model card
+    storedIn: 00_workspace/working_files/model-cards/
+    producedBy: Trainer Agent
+    phases: [training]
+  - id: publication-draft
+    name: Publication draft
+    storedIn: 00_workspace/working_files/publications/
+    producedBy: Publication Agent
+    phases: [publication]
+
+crossUnitDependencies:
+  - unit: SaaS Development
+    dependsOn: Cloud Infrastructure
+    coordinatedVia: "SaaS Delivery Manager ↔ Cloud Operations Manager"
+  - unit: Mobile Development
+    dependsOn: Cloud Infrastructure
+    coordinatedVia: "Mobile Platform Manager ↔ Cloud Operations Manager"
+  - unit: Web Development
+    dependsOn: [SaaS Development, Cloud Infrastructure]
+    coordinatedVia: "Web Delivery Manager ↔ SaaS Delivery Manager"
+  - unit: Desktop Development
+    dependsOn: [SaaS Development, Cloud Infrastructure]
+    coordinatedVia: "Desktop Solutions Manager ↔ SaaS Delivery Manager"
+  - unit: ML/Ops
+    dependsOn: Data Science
+    coordinatedVia: "MLOps Manager ↔ Data Science Manager"
+  - unit: AI Research
+    dependsOn: ML/Ops
+    coordinatedVia: "Research & Innovation Manager ↔ MLOps Manager"
+  - unit: Security & Compliance
+    dependsOn: All units
+    coordinatedVia: "Security & Compliance Manager (escalates to unit Manager)"
