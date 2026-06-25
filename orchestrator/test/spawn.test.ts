@@ -87,7 +87,7 @@ describe.skipIf(!apiUp)("Spawn & Assign (M2 — requires running services)", () 
 
   it("POST /agents/spawn returns 201 with 3 instances", () => {
     expect(spawnResponse).not.toBeNull();
-    expect(spawnResponse.status).toBe("spawned").or.toBe("partial");
+    expect(["spawned", "partial"]).toContain(spawnResponse.status);
     expect(spawnResponse.instances).toHaveLength(3);
   });
 
