@@ -46,9 +46,9 @@ for name in task-management session-management health-monitoring lifecycle-manag
   echo "    PID: $!"
 done
 
-# Start edit-coordinator (process-only, no port)
-echo "  Starting edit-coordinator (no port)..."
-REDIS_URL="$REDIS_URL" bun services/edit-coordinator/src/index.ts > "$LOG_DIR/orch-edit-coordinator.log" 2>&1 &
+# Start edit-coordinator (HTTP control on :3107)
+echo "  Starting edit-coordinator (:3107)..."
+PORT=3107 REDIS_URL="$REDIS_URL" REPO_ROOT="$ORCH_ROOT/.." bun services/edit-coordinator/src/index.ts > "$LOG_DIR/orch-edit-coordinator.log" 2>&1 &
 PIDS+=($!)
 echo "    PID: $!"
 

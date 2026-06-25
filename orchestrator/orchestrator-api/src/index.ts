@@ -219,6 +219,65 @@ const server = Bun.serve({
       return Response.json(await resp.json());
     }
 
+    // POST /features/spec — Phase 1 spec-to-issue pipeline (Initiative 6, gstack /spec extraction)
+    // Accepts a vague feature description; returns a structured scope doc.
+    // The 5-phase process (understand → scope → interrogate code → quality-gate → file)
+    // is executed by the PM Agent at runtime; this endpoint provides the structure.
+    if (path === "/features/spec" && req.method === "POST") {
+      if (!validateManagerAuth(req)) {
+        return Response.json({ error: "Unauthorized: Spec requires x-manager-token header" }, { status: 403 });
+      }
+      try {
+        const body = await req.json() as { description: string; unit: string; managerId: string };
+        if (!body.description || !body.unit || !body.managerId) {
+          return Response.json({ error: "Missing required fields: description, unit, managerId" }, { status: 400 });
+        }
+
+        // Mint a globally-unique featureSlug (designer3 §4)
+        const featureSlug = body.description
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 40) + "-" + crypto.randomUUID().slice(0, 8);
+
+        const scopeDoc = {
+          featureSlug,
+          problemStatement: body.description,
+          boundaries: { inScope: [], outOfScope: [] },
+          acceptanceCriteria: [] as string[],
+          nfrs: [] as string[],
+          mboTargets: [] as { name: string; target: string }[],
+          requestingManager: body.managerId,
+          units: [body.unit],
+          status: "spec-draft",
+          createdAt: new Date().toISOString(),
+        };
+
+        // Emit FeatureSubmitted intent if bus is connected
+        if (busConnected) {
+          await bus.publish("feature-lifecycle", {
+            type: "FeatureSubmitted",
+            idempotencyKey: crypto.randomUUID(),
+            featureSlug,
+            branch: `feature/${featureSlug}`,
+            timestamp: new Date().toISOString(),
+            source: SERVICE_NAME,
+            payload: {
+              featureSlug,
+              description: body.description,
+              requestingManager: body.managerId,
+              units: [body.unit],
+              scopeDoc,
+            },
+          });
+        }
+
+        return Response.json({ status: "spec-created", featureSlug, scopeDoc }, { status: 201 });
+      } catch (err: any) {
+        return Response.json({ error: err.message }, { status: 500 });
+      }
+    }
+
     // POST /features/:slug/dependsOn/:otherSlug (M5 — stub)
     const dependsMatch = path.match(/^\/features\/([^/]+)\/dependsOn\/([^/]+)$/);
     if (dependsMatch && req.method === "POST") {

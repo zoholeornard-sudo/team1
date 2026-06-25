@@ -7,6 +7,8 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@team1/contracts": "workspace:*"
+    "@team1/contracts": "workspace:*",
+    "redlock": "^5.0.0-beta.2",
+    "simple-git": "^3.36.0"
   }
 }

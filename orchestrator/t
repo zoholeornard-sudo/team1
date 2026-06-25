@@ -1,0 +1,5 @@
+/**
+ * team1 Orchestrator — M3 Branch-Only Work Coordination Test
+ *
+ * Verifies:
+ * 1. edit-coordinator applies an AcquireCheckout batch under lock, commits,
