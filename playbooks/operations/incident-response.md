@@ -1,7 +1,8 @@
 # Incident Response Playbook
 
-**Owner:** DevOps Agent + Security Agent | **Severity Levels:** P0/P1/P2/P3  
-**Last Updated:** 2025-06-03
+> **Phase:** 6 — Monitoring & Incident Response
+> **Owner:** DevOps Agent + Security Agent | **Severity Levels:** P0/P1/P2/P3
+> **Last Updated:** 2025-06-03
 
 ---
 

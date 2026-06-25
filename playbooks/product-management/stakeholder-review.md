@@ -1,7 +1,8 @@
 # Stakeholder Review Playbook
 
-**Owner:** Product Manager | **Cadence:** Weekly / per-milestone  
-**Last Updated:** 2025-06-03
+> **Phase:** 7 — Analysis & Feedback (weekly during active phases)
+> **Owner:** Product Manager | **Cadence:** Weekly / per-milestone
+> **Last Updated:** 2025-06-03
 
 ---
 

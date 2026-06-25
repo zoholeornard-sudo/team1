@@ -1,10 +1,73 @@
+---
+version: 0.1.0
+---
+
 # team1 Orchestrator
 
 The **runtime layer** that ties together the three document layers already in this repo:
-`agent-skills/` (definitions the registry reads), `assignments/` (MBO targets sessions pull),
+`agent-skills/` (definitions the registry reads), `metrics/` (MBO targets sessions pull from `mbo-targets.yaml`),
 `00_workspace/working_files/` (where spawned agents log progress + artifacts).
 
 It is not a new folder of skills — it is the **engine for the docs already written**.
+
+---
+
+## Getting Started
+
+### Prerequisites
+- [Bun](https://bun.sh/) ≥ 1.2 (runtime + package manager)
+- [Docker](https://docker.com/) (for Redis bus)
+- Redis ≥ 7 (provided via `infra/docker-compose.yml`)
+
+### Boot the bus
+
+```bash
+cd orchestrator
+bun install
+bun run boot:bus          # starts Redis on :6379
+```
+
+### Boot all 6 services + runtime + API
+
+```bash
+bun run boot:services    # starts :3101–:3109
+```
+
+### Verify health
+
+```bash
+curl -s http://localhost:3101/health | jq   # task-management
+curl -s http://localhost:3102/health | jq   # session-management
+curl -s http://localhost:3103/health | jq   # health-monitoring
+curl -s http://localhost:3104/health | jq   # lifecycle-management
+curl -s http://localhost:3105/health | jq   # event-coordination
+curl -s http://localhost:3106/health | jq   # edit-coordinator
+curl -s http://localhost:3107/health | jq   # agent-registry
+curl -s http://localhost:3108/health | jq   # orchestrator-api
+curl -s http://localhost:3109/health | jq   # runtime
+```
+
+---
+
+## Health-check endpoints
+
+| Service | Port | URL | Returns |
+|---------|------|-----|---------|
+| task-management | 3101 | `http://localhost:3101/health` | `{ service, status, port }` |
+| session-management | 3102 | `http://localhost:3102/health` | `{ service, status, port }` |
+| health-monitoring | 3103 | `http://localhost:3103/health` | `{ service, status, port }` |
+| lifecycle-management | 3104 | `http://localhost:3104/health` | `{ service, status, port }` |
+| event-coordination | 3105 | `http://localhost:3105/health` | `{ service, status, port }` |
+| edit-coordinator | 3106 | `http://localhost:3106/health` | `{ service, status, port }` |
+| agent-registry | 3107 | `http://localhost:3107/health` | `{ service, status }` |
+| orchestrator-api | 3108 | `http://localhost:3108/health` | `{ service, status }` |
+| runtime | 3109 | `http://localhost:3109/health` | `{ service, status, model }` |
+
+---
+
+## Intent contracts
+
+All services share a single intent catalog defined in [`packages/contracts/src/intents.ts`](packages/contracts/src/intents.ts). Every intent carries a mandatory `idempotencyKey` (24h TTL dedupe per service). See ADR-0002 for bus topology, ADR-0004 for the polling-agent execution model.
 
 ## What it does
 
@@ -70,4 +133,4 @@ Hooks into the existing Loki pipeline at `:3100`. No new collector. Services log
 | 5 | Cross-feature merge | Not started | MergeConflictDetected + resolution path |
 | 6 | Scale-out | Not started | Sharded coordinators or Postgres swap |
 
-See `docs/adr/` for the decisions this scaffold is built on. See `../00_workspace/working_files/drafts/orchestrator-design-spec.md` for the full design specification.
+See [`docs/adr/`](docs/adr/) for the decisions this scaffold is built on. See [`00_workspace/working_files/drafts/orchestrator-design-spec.md`](../00_workspace/working_files/drafts/orchestrator-design-spec.md) for the full design specification.

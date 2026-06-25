@@ -1,7 +1,8 @@
 # Sprint Planning
 
-**Owner:** Product Manager | **Cadence:** Bi-weekly  
-**Last Updated:** 2025-06-03
+> **Phase:** 1 — Planning & Requirements
+> **Owner:** Product Manager | **Cadence:** Bi-weekly
+> **Last Updated:** 2025-06-03
 
 ---
 

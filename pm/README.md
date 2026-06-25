@@ -1,3 +1,7 @@
+---
+version: 1.1
+---
+
 # team1 Platform Managers
 
 AI Manager skill definitions for the team1 Platform — leadership roles responsible for department MBO objectives, team coordination, and cross-unit collaboration.

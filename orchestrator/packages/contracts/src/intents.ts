@@ -96,7 +96,7 @@ export interface TaskCreatedPayload {
   phase: string; // current lifecycle phase
   description: string;
   acceptanceCriteria: string[];
-  mboMetrics: { name: string; target: string }[]; // pulled from assignments/<project>.json
+  mboMetrics: { name: string; target: string }[]; // pulled from metrics/mbo-targets.yaml
 }
 
 export interface TaskCompletedPayload {

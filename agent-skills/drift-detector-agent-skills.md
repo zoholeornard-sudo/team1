@@ -109,7 +109,7 @@
 
 Escalate to the unit AI Manager when:
 
-- Target metric in `assignments/teamelite-2025.json` is at risk of breach
+- Target metric in `metrics/mbo-targets.yaml` is at risk of breach
 - Cross-unit dependency blocks progress
 - Ambiguous or conflicting requirements from stakeholders
 - Resource or access constraints prevent task completion

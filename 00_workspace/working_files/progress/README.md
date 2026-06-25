@@ -65,7 +65,7 @@ One paragraph: what was attempted, what was achieved, headline status (on-track 
 
 ## MBO progress
 
-Pull your unit's metrics from `assignments/teamelite-2025.json`. Report each metric you touched this period.
+Pull your unit's metrics from `metrics/mbo-targets.yaml`. Report each metric you touched this period.
 
 | Metric | Target | Current value | Trend | Notes |
 |--------|--------|---------------|-------|-------|

@@ -1,7 +1,8 @@
 # Deployment Checklist
 
-**Owner:** DevOps Agent | **Trigger:** Pre-production deployment  
-**Last Updated:** 2025-06-03
+> **Phase:** 5 — Deployment & Release
+> **Owner:** DevOps Agent | **Trigger:** Pre-production deployment
+> **Last Updated:** 2025-06-03
 
 ---
 
@@ -89,6 +90,8 @@
 ---
 
 ## MBO Targets
+
+> Look up canonical values in `metrics/mbo-targets.yaml`
 
 - **SaaS:** [See Assignment]
 - **Web:** [See Assignment]

@@ -54,7 +54,7 @@
 |------|-------------|
 | **System Design** | Define end-to-end architecture for multi-tenant SaaS applications |
 | **Technical Vision** | Establish patterns, standards, and technology stack decisions |
-| **Quality Gates** | Ensure architectural decisions support assigned MBO targets — see [`assignments/teamelite-2025.json`](../../assignments/teamelite-2025.json) |
+| **Quality Gates** | Ensure architectural decisions support assigned MBO targets — see [`metrics/mbo-targets.yaml`](../../metrics/mbo-targets.yaml) |
 | **Cross-Unit Coordination** | Align architecture with Cloud Infrastructure, Security, and other units |
 
 ---

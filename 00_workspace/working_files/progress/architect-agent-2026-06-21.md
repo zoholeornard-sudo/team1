@@ -45,7 +45,7 @@ Designed and scaffolded the team1 Orchestrator — a runtime system (not a perso
 
 ## MBO progress
 
-Pull your unit's metrics from `file assignments/teamelite-2025.json`. Report each metric you touched this period.
+Pull your unit's metrics from `metrics/mbo-targets.yaml`. Report each metric you touched this period.
 
 | Metric | Target | Current value | Trend | Notes |
 | --- | --- | --- | --- | --- |

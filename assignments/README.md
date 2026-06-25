@@ -1,3 +1,7 @@
+---
+version: 1.1
+---
+
 # team1 Project Assignments
 
 MBO (Management by Objectives) targets are **not defined in unit templates**. They are specified at assignment time, per project, in this directory.
@@ -6,7 +10,7 @@ MBO (Management by Objectives) targets are **not defined in unit templates**. Th
 
 - One file per project: `file assignments/<project-slug>.json`
 - `project-slug` is lowercase, alphanumeric, hyphens only (e.g. `teamelite-2025`)
-- Each unit deployed for the project is listed under `units`, keyed by the unit's full `name` as it appears in `file teamelite-2025.json` / `file agent-skills/plugin-manifest.json`
+- Each unit deployed for the project is listed under `units`, keyed by the unit's full `name` as it appears in `file metrics/mbo-targets.yaml` / `file agent-skills/plugin-manifest.json`
 - A unit may be listed even if its `mboObjective` is `null` — meaning "unit participates in this project, but the PM has not yet set targets for it"
 
 ## Shape
@@ -47,4 +51,4 @@ This directory formalizes the assignment-time pattern as a first-class artifact,
 
 | Version | Date | Changes |
 | --- | --- | --- |
-| 1.0 | 2025-06-10 | Initial convention; seeded with `file teamelite-2025.json` (the values previously baked into the templates) |
+| 1.0 | 2025-06-10 | Initial convention; seeded with `file metrics/mbo-targets.yaml` (the values previously baked into the templates) |

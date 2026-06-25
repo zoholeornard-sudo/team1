@@ -1,3 +1,7 @@
+---
+version: 1.0
+---
+
 # 00_workspace
 
 This workspace contains directories for each active unit PM. Below is an index of the units:

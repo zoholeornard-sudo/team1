@@ -1,6 +1,10 @@
+---
+version: 1.1
+---
+
 # team1 Operational Playbooks
 
-Operational workflows and runbooks for the team1 Platform — extracted and adapted from Anthropic's knowledge-work-plugins (operations, product-management).
+Operational workflows and runbooks for the team1 Platform
 
 ---
 
@@ -9,15 +13,16 @@ Operational workflows and runbooks for the team1 Platform — extracted and adap
 ```
 playbooks/
 ├── operations/          # Operational workflows
-│   ├── runbook-template.md
 │   ├── incident-response.md
 │   ├── deployment-checklist.md
 │   └── capacity-planning.md
 ├── product-management/   # Product workflows
-│   ├── spec-template.md
 │   ├── sprint-planning.md
 │   ├── feature-rollout.md
 │   └── stakeholder-review.md
+├── templates/           # Templates (use to create new playbooks)
+│   ├── runbook.md
+│   └── spec.md
 └── README.md            # This file
 ```
 
@@ -25,12 +30,12 @@ playbooks/
 
 ## Quick Reference
 
-| Playbook | Purpose | Trigger |
-|----------|---------|---------|
-| `/runbook <task>` | Document repeatable procedure | New recurring task, on-call handoff |
-| `/write-spec <feature>` | Create PRD/feature spec | New feature, user request |
-| `/incident` | Incident response workflow | Production issue |
-| `/sprint-plan` | Sprint planning workflow | Start of sprint |
+| Playbook | Purpose | Trigger | Phase |
+|----------|---------|---------|-------|
+| `/runbook <task>` | Document repeatable procedure | New recurring task, on-call handoff | Any |
+| `/write-spec <feature>` | Create PRD/feature spec | New feature, user request | Planning |
+| `/incident` | Incident response workflow | Production issue | Monitoring |
+| `/sprint-plan` | Sprint planning workflow | Start of sprint | Planning |
 
 ---
 
@@ -40,8 +45,8 @@ Each playbook can be invoked by corresponding agents:
 
 | Agent Type | Primary Playbooks |
 |------------|------------------|
-| **DevOps Agent** | runbook, incident-response, deployment-checklist |
-| **Product Manager Agent** | write-spec, sprint-planning, feature-rollout |
+| **DevOps Agent** | incident-response, deployment-checklist |
+| **Product Manager Agent** | spec, sprint-planning, feature-rollout |
 | **SaaS Delivery Manager** | stakeholder-review, capacity-planning |
 
 ---
@@ -51,7 +56,7 @@ Each playbook can be invoked by corresponding agents:
 ### For Managers
 
 ```
-1. Planning: Use /write-spec for new initiatives
+1. Planning: Use spec template for new initiatives
 2. Review: Follow stakeholder-review playbook
 3. Incident: Execute incident-response workflow
 ```
@@ -71,6 +76,7 @@ Each playbook can be invoked by corresponding agents:
 
 Every playbook must include:
 
+- [ ] **Phase badge** — Which lifecycle phase(s) this playbook applies to
 - [ ] **Purpose** — What and when
 - [ ] **Prerequisites** — Access, tools, data needed
 - [ ] **Procedure** — Step-by-step with exact commands
@@ -94,8 +100,20 @@ Playbooks are living documents. Update when:
 
 ---
 
+## MBO Data Source
+
+When playbooks reference `[See Assignment]` or "MBO objectives", agents should look up the canonical values in:
+
+- **`metrics/mbo-targets.yaml`** — Source of truth for all unit MBO objectives and metrics
+
+The `[See Assignment]` placeholder pattern is used throughout playbooks to indicate where an agent must pull the relevant MBO target for the unit they are operating in.
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-06-03 | team1 Platform | Initial playbook structure |
+| 1.1 | 2026-06-25 | team1 | Moved templates to `templates/` folder, renamed to `runbook.md` and `spec.md`. Added Phase column to Quick Reference. Added front-matter version. |
+| 1.2 | 2026-06-25 | team1 | Updated MBO data source reference to `metrics/mbo-targets.yaml`. Added MBO Data Source section. |

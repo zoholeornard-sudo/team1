@@ -1,3 +1,7 @@
+---
+version: 1.1.0
+---
+
 # team1 Agent Skills
 
 Agentic AI skill definitions for the team1 Platform — a Management by Objectives (MBO) framework where functional departments are managed by AI Managers and executed by specialized AI Agents.
@@ -10,7 +14,7 @@ Agentic AI skill definitions for the team1 Platform — a Management by Objectiv
 
 | Unit | Manager | MBO Target (assignment) | Skills |
 | --- | --- | --- | --- |
-| **SaaS Development** | SaaS Delivery Manager | *see assignment* | [Architect](./architect-agent-skills.md), [Full-Stack Dev](./full-stack-dev-agent-skills.md), [DevOps](./devops-agent-skills.md), [UI/UX](./ui-ux-agent-skills.md), [Product Manager](./product-manager-agent-skills.md), [QA](./qa-agent-skills.md) |
+| **SaaS Development** | SaaS Delivery Manager | *see metrics/mbo-targets.yaml* | [Architect](./architect-agent-skills.md), [Full-Stack Dev](./full-stack-dev-agent-skills.md), [DevOps](./devops-agent-skills.md), [UI/UX](./ui-ux-agent-skills.md), [Product Manager](./product-manager-agent-skills.md), [QA](./qa-agent-skills.md) |
 | **Mobile Development** | Mobile Platform Manager | *see assignment* | [Mobile Architect](./mobile-architect-agent-skills.md), [Frontend Dev](./frontend-dev-agent-mobile-skills.md), [Backend Dev](./backend-dev-agent-mobile-skills.md), [Release](./release-agent-mobile-skills.md) |
 | **Web Development** | Web Delivery Manager | *see assignment* | [Web Architect](./web-architect-agent-skills.md), [SEO Agent](./seo-agent-skills.md) |
 | **Desktop Development** | Desktop Solutions Manager | *see assignment* | [Desktop Architect](./desktop-architect-agent-skills.md), [Crash Report](./crash-report-agent-skills.md) |
@@ -80,9 +84,9 @@ Each skill file documents which phases the agent leads vs. supports.
 
 - `file references/domain-template.md` — Template for adding new department domains
 - `file references/skill-template.md` — Template for new agent skill files
-- `file teamelite-2025.json`
+- `file metrics/mbo-targets.yaml`
   
-   — Source of truth for platform structure
+   — Source of truth for platform MBO targets and metrics
 
 ---
 

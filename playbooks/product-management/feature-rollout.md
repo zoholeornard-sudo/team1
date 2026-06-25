@@ -1,7 +1,8 @@
 # Feature Rollout Playbook
 
-**Owner:** Product Manager + DevOps Agent  
-**Last Updated:** 2025-06-03
+> **Phase:** 1 → 7 — Full lifecycle (Planning through Monitoring)
+> **Owner:** Product Manager + DevOps Agent
+> **Last Updated:** 2025-06-03
 
 ---
 

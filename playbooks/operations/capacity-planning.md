@@ -1,13 +1,16 @@
 # Capacity Planning
 
-**Owner:** Cloud Operations Manager | **Cadence:** Quarterly + ad-hoc  
-**Last Updated:** 2025-06-03
+> **Phase:** 1 — Planning & Requirements (quarterly); 6 — Monitoring (continuous)
+> **Owner:** Cloud Operations Manager | **Cadence:** Quarterly + ad-hoc
+> **Last Updated:** 2025-06-03
 
 ---
 
 ## Purpose
 
 Right-size infrastructure to meet MBO performance targets while controlling cost. Targets the platform's [See Assignment] and [See Assignment] provisioning time.
+
+> Canonical MBO values: `metrics/mbo-targets.yaml`
 
 ---
 
@@ -97,7 +100,7 @@ Right-size infrastructure to meet MBO performance targets while controlling cost
 
 ## Escalation
 
-Escalate to dbox Platform executive when:
+Escalate to team1 Platform executive when:
 - Capacity needs exceed quarterly budget
 - MBO targets conflict (cost vs performance)
 - Provisioning SLA slipping (see Assignment target)

@@ -12,7 +12,7 @@
       "name": "SaaS Development Unit",
       "aiManager": "SaaS Delivery Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "SaaS Development Unit"
       },
       "agentCount": 8
@@ -21,7 +21,7 @@
       "name": "Mobile Development Unit",
       "aiManager": "Mobile Platform Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "Mobile Development Unit"
       },
       "agentCount": 7
@@ -30,7 +30,7 @@
       "name": "Web Development Unit",
       "aiManager": "Web Delivery Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "Web Development Unit"
       },
       "agentCount": 8
@@ -39,7 +39,7 @@
       "name": "Desktop Development Unit",
       "aiManager": "Desktop Solutions Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "Desktop Development Unit"
       },
       "agentCount": 7
@@ -48,7 +48,7 @@
       "name": "Cloud Infrastructure Unit",
       "aiManager": "Cloud Operations Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "Cloud Infrastructure Unit"
       },
       "agentCount": 6
@@ -57,7 +57,7 @@
       "name": "ML/Ops Unit",
       "aiManager": "MLOps Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "ML/Ops Unit"
       },
       "agentCount": 6
@@ -66,7 +66,7 @@
       "name": "AI Research Unit",
       "aiManager": "Research & Innovation Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "AI Research Unit"
       },
       "agentCount": 5
@@ -75,7 +75,7 @@
       "name": "Data Science Unit",
       "aiManager": "Data Science Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "Data Science Unit"
       },
       "agentCount": 5
@@ -84,7 +84,7 @@
       "name": "Security & Compliance Unit",
       "aiManager": "Security & Compliance Manager",
       "mboObjective": {
-        "project": "assignments/teamelite-2025.json",
+        "project": "metrics/mbo-targets.yaml",
         "unit": "Security & Compliance Unit"
       },
       "agentCount": 5
@@ -98,5 +98,5 @@
     "security": "AES-256, OAuth2/OIDC, continuous compliance monitoring",
     "extensibility": "Plug-in architecture for new Departments/Agents"
   },
-  "_versionNotes": "v1.1.0 (2025-06-10): MBO objectives moved to assignment-time. mboObjective is now a structured pointer to assignments/teamelite-2025.json. Original values preserved there."
+  "_versionNotes": "v1.2.0 (2026-06-25): MBO objectives migrated from assignments/teamelite-2025.json to metrics/mbo-targets.yaml. Original JSON file deprecated and scheduled for removal."
 }
