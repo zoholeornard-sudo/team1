@@ -1,7 +1,17 @@
 {
   "name": "@orchestrator/runtime",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "scripts": { "dev": "bun src/index.ts" },
-  "dependencies": { "@team1/contracts": "workspace:*" }
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@team1/contracts": "workspace:*",
+    "@team1/bus-client": "workspace:*",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.0"
+  }
 }

@@ -81,6 +81,10 @@ export class BusClient {
     EditReverted: "edit-coordination",
     // Lifecycle escalation (v1.1.0)
     PhaseEscalation: "lifecycle-gating",
+    // Lifecycle loop extraction (2026-06-22) — gstack /office-hours → /canary protocols
+    PhaseReviewScore: "lifecycle-gating",
+    ScopeChangeRequest: "edit-coordination",
+    DeployVerified: "lifecycle-gating",
     // Bus hygiene
     DeadLetter: "dead-letter-queue",
   };

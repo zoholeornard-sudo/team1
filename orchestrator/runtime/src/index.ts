@@ -5,26 +5,59 @@
  * intents per instance, feeds each into a /zo/ask turn as seed context.
  * Agents are stateless across turns; runtime holds all state.
  */
-import type { AgentAssigned, TaskCreated } from "@team1/contracts";
+import { BusClient } from "@team1/bus-client";
+import { RuntimeSupervisor } from "./supervisor.js";
+import { callZoAsk } from "./zo-ask.js";
+import { RUNTIME_PORT, DEFAULT_REDIS_URL, RUNTIME_SERVICE_NAME } from "./config.js";
 
-const PORT = Number(process.env.PORT) || 3109;
+const PORT = RUNTIME_PORT;
 
-console.log("[runtime] booting — polling-agent execution model (ADR-0004)");
+console.log(`[${RUNTIME_SERVICE_NAME}] booting — polling-agent execution model (ADR-0004)`);
 
-// Milestone 2: subscribe to intents:agent-assigned
-// Milestone 2: for each assignment, spawn /zo/ask turn with seed context
-// Milestone 2: emit Heartbeat every 30s on behalf of in-flight children
-// Milestone 2: on agent return value, emit TaskCompleted / AcquireCheckout / EditIntent
+const bus = new BusClient({
+  redisUrl: DEFAULT_REDIS_URL,
+  serviceName: RUNTIME_SERVICE_NAME,
+});
+
+const supervisor = new RuntimeSupervisor(bus, callZoAsk);
+
+// Boot the supervisor (connects to bus, creates consumer groups, starts consuming)
+supervisor.start().catch((err) => {
+  console.error(`[${RUNTIME_SERVICE_NAME}] fatal: supervisor failed to start:`, err);
+  process.exit(1);
+});
 
 Bun.serve({
   port: PORT,
   fetch(req) {
     const url = new URL(req.url);
-    if (url.pathname === "/health") {
-      return Response.json({ service: "runtime", status: "booting", model: "polling-agent" });
+    if (url.pathname === "/health" || url.pathname === "/healthz") {
+      return Response.json({
+        service: RUNTIME_SERVICE_NAME,
+        status: "active",
+        model: "polling-agent",
+        inFlightTurns: supervisor.getInFlightCount(),
+        busConnected: bus.getConnected(),
+      });
+    }
+    if (url.pathname === "/readyz") {
+      const ready = bus.getConnected();
+      return new Response(
+        JSON.stringify({ ready, service: RUNTIME_SERVICE_NAME }),
+        { status: ready ? 200 : 503, headers: { "Content-Type": "application/json" } }
+      );
     }
     return new Response("Not found", { status: 404 });
   },
 });
 
-console.log("[runtime] listening on :" + PORT);
+// Graceful shutdown
+const shutdown = async (signal: string) => {
+  console.log(`[${RUNTIME_SERVICE_NAME}] received ${signal}, shutting down...`);
+  await supervisor.stop();
+  process.exit(0);
+};
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+console.log(`[${RUNTIME_SERVICE_NAME}] listening on :${PORT}`);
