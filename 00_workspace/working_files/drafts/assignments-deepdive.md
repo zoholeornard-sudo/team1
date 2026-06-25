@@ -1,300 +1,225 @@
-# Deep Dive — Assignments & MBO Flow
+# Deep Dive — Assignments: Who Assigns, When, and How Metrics Actually Work
 
-> **Thesis:** The assignments file is the MBO soul of the platform — it defines *what success means* for each of the 9 units. The contracts, lifecycle gates, and skill files all reference it. But no code actually reads it. The entire MBO framework is contractually defined but not wired at runtime. The gate evaluator is correct but receives empty input.
+**Date:** 2026-06-25
+**Author:** `@architect-agent` (via Zo)
+**Trigger:** "who assigns a task? is it reasonable to have metrics before knowing what to measure? if the web dev unit is requested to build a stock price prediction dashboard, could we use hardcoded MBOs and pre-assigned agents? how does a project get decomposed to granular tasks? who assigns?"
 
----
-
-## 1. The source of truth
-
-`file 'assignments/teamelite-2025.json'` — assigned 2025-06-10, 9 units, 23 metrics total.
-
-| Unit | Metrics | Example targets |
-|------|---------|-----------------|
-| SaaS Development | 4 | 99.9% uptime, sub-200ms API, <5% bug escape |
-| Mobile Development | 4 | <2h CI cycle, <1s cold launch, 4.5+ store rating |
-| Web Development | 3 | <1s TTFB @ 100k users, WCAG 2.1 AA, SEO >90 |
-| Desktop Development | 2 | Zero installer failures, crash MTTR <5min |
-| Cloud Infrastructure | 2 | 95% cost utilization, <30s provisioning |
-| ML/Ops | 2 | <0.5% drift false positives, deployment <15min |
-| AI Research | 2 | 4 prototypes/quarter, 2 publications/year |
-| Data Science | 2 | 5 insights/month, A/B lift >10% |
-| Security & Compliance | 2 | Zero critical vulns, IR <1hr |
-
-**Structure:** Each unit has an `mboObjective` (human-readable string) and a `metrics` array of `{name, target, measurement}`. The `measurement` field describes *how* the metric is observed — but no code parses it.
-
-**Static snapshot:** The file is a one-time seed. There's no mechanism for reassignment, metric updates, or multi-project support. The `project` field is hardcoded to `teamelite-2025`.
+**Answer up front:** No, hardcoded unit MBOs are not sufficient for feature-level work, and the current design has **no decomposition or assignment step at all**. Agents are spawned and then sit idle waiting for tasks that nothing ever creates. This is the largest functional gap in the orchestrator.
 
 ---
 
-## 2. Where assignments are referenced (the contract surface)
+## 1. The three-level metric problem
 
-### 2.1 Lifecycle exit criteria (`.main.lifecycle.md`)
+The current design treats MBOs as one flat thing. They're actually three distinct levels, and conflating them is the root of the question's concern.
 
-Every phase exit gate references MBO metrics "loaded from `assignments/<project>.json`":
+| Level | What it is | Where it lives today | When it's known | Example (stock dashboard) |
+|--------|-----------|---------------------|-----------------|---------------------------|
+| **Unit standing MBO** | Always-on quality bar for everything a unit ships | `assignments/teamelite-2025.json` | At assignment time, before any feature | Web Dev: <1s TTFB, WCAG 2.1 AA, SEO >90 |
+| **Feature MBO** | What *this specific feature* must achieve | **Nowhere — not modeled** | Phase 1 (Planning), derived from the feature's nature | Prediction accuracy >80%, dashboard loads <2s, updates every 30s |
+| **Task acceptance criteria** | Concrete, per-task, binary pass/fail | `TaskCreatedPayload.acceptanceCriteria: string[]` | At decomposition time, after scope is defined | "API endpoint returns 200 with valid JSON", "model outputs prediction + confidence interval" |
 
-| Phase | MBO gate |
-|-------|----------|
-| 1 | Metric targets loaded with baselines recorded |
-| 2 | Architecture-review-coverage on target (100%) |
-| 3 | Technical-debt-ratio <15% or planned-gap declared |
-| 4 | Bug-escape-rate <5% or accepted remediation |
-| 5 | Deployment-success-rate >99% |
-| 6 | Unit's MBO metrics within target (canary measurement) |
-| 7 | MBO gaps from phases 3–6 → mandatory Phase 1 inputs |
+**The problem:** the gate-evaluator's `mboMetrics` field is fed unit standing MBOs, but those don't apply to every feature. SEO >90 is meaningless for an internal stock prediction dashboard. A/B Test Lift >10% is irrelevant when there's no experiment to run. The gate either passes vacuously (no applicable metrics) or blocks irreversibly (a standing MBO that doesn't apply to this feature and has no planned-gap declaration mechanism that fits).
 
-### 2.2 Skill files
+**What's needed:** feature MBOs are a distinct concept that must be modeled, derived in Phase 1, and used as the gate's metric input — not the unit standing MBOs. The standing MBOs are a *checklist the Manager reviews at Phase 7*, not a per-gate enforcement.
 
-- `architect-agent-skills.md` — "Ensure architectural decisions support assigned MBO targets — see `assignments/teamelite-2025.json`"
-- `product-manager-agent-skills.md` — "Load targets from `assignments/<project>.json`. If no metric moves, the feature probably isn't a unit-level priority."
-- `experiment-runner-agent-skills.md` — "Target metric in `assignments/teamelite-2025.json` is at risk of breach"
+---
 
-### 2.3 Intent contracts (`packages/contracts/src/intents.ts`)
+## 2. The decomposition gap — the missing pipeline
+
+Here's the full flow as designed vs. as built:
+
+```
+Feature submitted
+    │
+    ▼
+Phase 1 (Planning) — PM Agent produces scope doc
+    │
+    ▼
+???  ←── THE GAP: who breaks the scope doc into tasks?
+    │
+    ▼
+Task created (POST /tasks) — but WHO calls this?
+    │
+    ▼
+Task assigned to agent (capability match) — but WHO does this?
+    │
+    ▼
+AgentAssigned emitted — runtime launches turn
+    │
+    ▼
+Agent does work, emits TaskCompleted
+    │
+    ▼
+Phase gate check — gate-evaluator
+```
+
+**What actually exists:**
+
+| Step | Implemented? | Evidence |
+|------|-------------|---------|
+| Feature submitted | ✅ | `orchestrator-api` `/features/spec` endpoint |
+| Phase 1 scope doc | ✅ (structure) | `FeatureSubmittedPayload.scopeDoc` — but it's a scaffold, not populated by a real PM Agent turn |
+| **Decompose scope → tasks** | ❌ **MISSING** | No code path. No service. No intent. No agent is told to do this. |
+| **Create tasks** | ✅ (endpoint) | `task-management` `POST /tasks` — but nobody calls it |
+| **Assign task → agent** | ❌ **MISSING** | `agent-registry` stores `capability` but has no matching endpoint. No service matches task capability to available instances. |
+| **Emit TaskCreated** | ❌ **MISSING** | Defined in contracts, consumed by runtime, but never emitted by anything |
+| Agent does work | ✅ (structure) | Runtime `handleTaskCreated` → `executeTurn` → `/zo/ask` |
+| Phase gate check | ✅ | `lifecycle-management` `/phase/gate-check` + `gate-evaluator.ts` |
+
+**The spawn flow creates agents and writes "Awaiting first task assignment" in their progress file. Then nothing assigns.** This is the core finding.
+
+---
+
+## 3. Tracing the stock prediction dashboard example
+
+**Feature:** "Build a stock price prediction dashboard using a stock market API"
+
+### What should happen
+
+| Step | Actor | Action | Output |
+|------|-------|--------|--------|
+| 1 | Manager | `POST /features/spec` with description | `featureSlug: stock-price-prediction-dashboard` |
+| 2 | PM Agent (Phase 1) | Runs /office-hours protocol: who needs this, what's the narrowest wedge, read existing code | Scope doc: dashboard UI + prediction API + data pipeline |
+| 3 | PM Agent (Phase 1) | **Derives feature MBOs** from the feature's nature, not from unit standing MBOs | Prediction accuracy >80%, dashboard load <2s, real-time updates <30s lag |
+| 4 | PM Agent (Phase 1) | **Identifies required capabilities** from scope | `frontend`, `data-science`, `backend-api`, `devops` |
+| 5 | **Decomposer** (PM Agent or Manager) | **Breaks scope into tasks** with acceptance criteria + capability + phase + dependencies | See task table below |
+| 6 | **Assigner** (task-management or agent-registry) | **Matches each task's capability to available agents**; spawns if none available | Task→agent mapping |
+| 7 | task-management | Emits `TaskCreated` per task | Runtime picks up, launches turns |
+| 8 | Agents | Execute turns, emit `TaskCompleted` | Artifacts produced |
+| 9 | lifecycle-management | Phase gate check with **feature MBOs** (not unit standing MBOs) | Gate verdict |
+
+### The task decomposition (step 5)
+
+| Task ID | Capability | Phase | Description | Acceptance criteria | Depends on |
+|---------|-----------|-------|-------------|---------------------|------------|
+| T-001 | data-science | 3 | Build prediction model from stock API historical data | Model outputs price prediction + confidence interval; backtest accuracy >80% | — |
+| T-002 | backend-api | 3 | Build prediction API endpoint | `GET /api/predict/:symbol` returns 200 with `{prediction, confidence, updatedAt}`; handles rate limits | T-001 |
+| T-003 | frontend | 3 | Build dashboard UI | Displays predictions, auto-refreshes every 30s, WCAG 2.1 AA | T-002 |
+| T-004 | devops | 5 | Deploy dashboard to production | Accessible at URL, autoscaling configured, <30s provisioning | T-003 |
+
+### What's wrong with hardcoded MBOs here
+
+| Unit standing MBO | Applies to this feature? | Why |
+|-------------------|------------------------|-----|
+| Web Dev: TTFB <1s at 100k users | **Partially** — dashboard should be fast, but 100k concurrent users is unlikely for an internal tool | Standing MBO is over-specified for this feature |
+| Web Dev: WCAG 2.1 AA | **Yes** — always applies to any web UI | Directly usable |
+| Web Dev: SEO >90 | **No** — internal dashboard, not indexed | Would block the gate if enforced literally |
+| Data Science: A/B Test Lift >10% | **No** — no experiment to run | Would block the gate |
+| Data Science: 5 actionable insights/month | **No** — this is a unit-level throughput metric, not a feature metric | Wrong granularity entirely |
+| Cloud: Cost utilization 95% | **Partially** — applies to the deployment, but is measured at the unit level, not per-feature | Can't be evaluated per-task |
+
+**Conclusion:** unit standing MBOs are a **Phase 7 review checklist**, not a per-gate enforcement. The per-gate enforcement must use **feature MBOs** derived in Phase 1.
+
+---
+
+## 4. Who assigns? — the role analysis
+
+Three candidates for the decomposer/assigner role:
+
+| Candidate | Role in current design | Fit | Why |
+|-----------|----------------------|-----|-----|
+| **PM Agent** | Phase 1 lead; writes scope docs | **Good for decomposition** — PM owns the feature scope, knows what needs building | But PM doesn't know agent capabilities or availability — shouldn't assign |
+| **Unit Manager** | Spawns agents; validates manager authority | **Good for assignment** — Manager knows their unit's agents and their capabilities | But Manager is unit-scoped — a cross-unit feature (stock dashboard spans Web + Data Science + Cloud) needs coordination above any single Manager |
+| **task-management service** | Stores tasks; emits PhaseGateCheck | **Good as the mechanical assigner** — it's the system of record for tasks, and it can match task.capability against agent-registry entries | But it needs a decomposition input — it can't invent tasks from a scope doc |
+
+**Recommended split:**
+
+```
+PM Agent (Phase 1)          → decomposes scope doc into task specs (description, capability, phase, acceptance criteria, dependencies)
+                              Output: a task-spec list, submitted to task-management
+
+task-management             → for each task spec:
+                                1. Creates the task (POST /tasks — internal call)
+                                2. Queries agent-registry for instances matching task.capability + task.featureSlug
+                                3. If no instance exists → requests spawn from orchestrator-api
+                                4. Emits TaskCreated intent → runtime launches the turn
+
+agent-registry              → gains a new endpoint: GET /agents/match?capability=frontend&featureSlug=stock-dashboard
+                              Returns available instances or empty (triggering a spawn request)
+```
+
+This gives us:
+- **Decomposition** = PM Agent (human-in-the-loop intelligence, uses /office-hours protocol)
+- **Assignment** = task-management (mechanical capability matching against registry)
+- **Spawning** = orchestrator-api (on-demand when no agent exists for a capability)
+
+---
+
+## 5. What needs to change in the code
+
+### 5.1 Model feature MBOs (contract change)
 
 ```typescript
-// TaskCreatedPayload
-mboMetrics: { name: string; target: string }[];  // "pulled from assignments/<project>.json"
-
-// PhaseGateCheckPayload
-mboMetrics: { name: string; value: string; target: string; onTarget: boolean }[];
-plannedGaps: { metric: string; declaredGap: string }[];  // path (c)
-```
-
-### 2.4 Seed context (`runtime/src/seed-context.ts`)
-
-The agent's prompt includes:
-```
-### MBO metrics for this task
-- Uptime: target 99.9%
-- API Response: target sub-200ms under load
-```
-...but only if `taskPayload.mboMetrics` is populated. Which it never is.
-
----
-
-## 3. The flow that should exist (designed)
-
-```text
-FeatureSubmitted { unit: "SaaS Development Unit" }
-  │
-  ├─ orchestrator-api loads assignments/teamelite-2025.json
-  │   → extracts SaaS Development Unit.metrics
-  │   → attaches to scopeDoc.mboTargets
-  │
-  ├─ task-management creates tasks
-  │   → each task carries mboMetrics from the assignment
-  │
-  ├─ seed-context injects mboMetrics into agent prompt
-  │   → agent knows its targets before working
-  │
-  ├─ agent works, declares planned gaps in progress reports
-  │
-  ├─ health-monitoring measures actual values
-  │   → emits MboMetricReport { name, value, target, onTarget }
-  │
-  ├─ task-management includes mboMetrics in PhaseGateCheck
-  │   → real values + targets, not empty arrays
-  │
-  └─ gate-evaluator evaluates both gates
-      → MBO gate has real data to evaluate
-      → verdict reflects actual metric status
-```
-
-## 4. The flow that actually exists (reality)
-
-```text
-FeatureSubmitted { unit: "SaaS Development Unit" }
-  │
-  ├─ orchestrator-api creates scopeDoc with mboTargets: []  ← EMPTY
-  │   (no code reads the assignments file)
-  │
-  ├─ task-management creates tasks with mboMetrics: []  ← EMPTY
-  │   (echoes what it was given)
-  │
-  ├─ seed-context injects "(none specified)" into prompt
-  │   (agent works blind — no targets)
-  │
-  ├─ health-monitoring has quality-score but doesn't emit MboMetricReport
-  │   (no measurement → no reporting)
-  │
-  ├─ PhaseGateCheck has mboMetrics: []  ← EMPTY
-  │   (task-management line 63: `mboMetrics: []`)
-  │
-  └─ gate-evaluator: MBO gate passes trivially
-      (no metrics to evaluate → missing.length === 0 → passed)
-      (the gate is correct; it just has nothing to gate on)
-```
-
----
-
-## 5. The seven gaps
-
-| # | Gap | Where | Severity |
-|---|-----|-------|----------|
-| **G1** | **No assignments loader** — no code reads `assignments/teamelite-2025.json` | orchestrator-api `/features/spec` endpoint | **Critical** — the entire MBO framework is inert without this |
-| **G2** | **No unit→metric mapping at runtime** — the JSON has unit keys, but no code extracts metrics for a specific unit | orchestrator-api | **Critical** — depends on G1 |
-| **G3** | **No baseline recording** — Phase 1 exit says "baselines recorded" but there's no baseline storage | lifecycle-management | **High** — without baselines, "on target" is meaningless |
-| **G4** | **No MboMetricReport emission** — health-monitoring has `quality-score.ts` but doesn't emit `MboMetricReport` intents | health-monitoring | **High** — the canary loop (Initiative 5) is defined but not wired to emit reports |
-| **G5** | **Task-management hardcodes empty mboMetrics** — line 63: `mboMetrics: []` | task-management `emitPhaseGateCheck` | **Critical** — even if metrics were loaded upstream, they're dropped here |
-| **G6** | **No planned-gap collection** — the aligned rule path (c) depends on agents declaring gaps in progress reports, but nothing aggregates them into `PhaseGateCheck.plannedGaps` | task-management / lifecycle-management | **High** — path (c) is inert |
-| **G7** | **No multi-project support** — the file is a single static snapshot; `FeatureSubmitted` carries a `units[]` array but no project selector | assignments file structure | **Medium** — blocks future expansion |
-
----
-
-## 6. The fix — one module, three wiring points
-
-### 6.1 New module: `packages/contracts/src/assignments-loader.ts`
-
-```typescript
-// Reads assignments/<project>.json, extracts metrics for a unit.
-// Pure function — no I/O side effects beyond file read.
-
-export interface UnitAssignment {
-  unit: string;
-  mboObjective: string;
-  metrics: { name: string; target: string; measurement: string }[];
-}
-
-export function loadUnitAssignment(
-  project: string,
-  unit: string,
-  assignmentsRoot: string
-): UnitAssignment | null {
-  const path = `${assignmentsRoot}/${project}.json`;
-  const data = JSON.parse(readFileSync(path, "utf8"));
-  const unitData = data.units[unit];
-  if (!unitData) return null;
-  return { unit, ...unitData };
+// In FeatureSubmittedPayload — already has scopeDoc, but scopeDoc doesn't carry feature MBOs
+export interface ScopeDoc {
+  problemStatement: string;
+  boundaries: string[];
+  acceptanceCriteria: string[];
+  nfrs: { name: string; target: string }[];
+  featureMbos: { name: string; target: string; measurement: string; appliesToPhase: string }[];  // NEW
+  existingCodeRead: boolean;
+  dedupedAgainst: string[];
 }
 ```
 
-### 6.2 Wiring point 1: orchestrator-api `/features/spec`
+### 5.2 Add a decomposition endpoint (new)
 
-When `FeatureSubmitted` is emitted, load the unit's metrics and attach:
-
-```typescript
-const assignment = loadUnitAssignment("teamelite-2025", body.unit, ASSIGNMENTS_ROOT);
-scopeDoc.mboTargets = assignment?.metrics.map(m => ({ name: m.name, target: m.target })) ?? [];
+```
+POST /features/:slug/decompose
+  Body: { taskSpecs: [{ description, capability, phase, acceptanceCriteria[], dependencies[] }] }
+  → task-management creates tasks
+  → task-management matches each to agents via agent-registry
+  → task-management emits TaskCreated per matched task
+  → orchestrator-api spawns agents for unmatched capabilities
 ```
 
-### 6.3 Wiring point 2: task-management `emitPhaseGateCheck`
+### 5.3 Add capability matching to agent-registry (new endpoint)
 
-When emitting `PhaseGateCheck`, include the real MBO metrics (received from the task, not hardcoded):
-
-```typescript
-// Replace line 63: mboMetrics: [],
-mboMetrics: phaseTasks[0]?.mboMetrics ?? [],
-plannedGaps: collectPlannedGaps(phaseTasks),  // G6 fix
+```
+GET /agents/match?capability=frontend&featureSlug=stock-dashboard
+  → Returns: { matched: [{ id, branch }], unmatched: true } 
+  → If unmatched, caller requests spawn
 ```
 
-### 6.4 Wiring point 3: health-monitoring → `MboMetricReport`
+### 5.4 Change gate-evaluator to use feature MBOs, not unit standing MBOs
 
-The canary loop (Initiative 5) and quality-score already produce values. Wire them to emit:
+The gate's `mboMetrics` input should come from the feature's `scopeDoc.featureMbos`, not from `assignments/<project>.json`. Unit standing MBOs move to a Phase 7 review checklist that the Manager signs off on, not a per-gate enforcement.
 
-```typescript
-bus.publish("health", {
-  type: "MboMetricReport",
-  payload: { featureSlug, phase: "6", metricName: "Uptime", value: "99.95%", target: "99.9%", onTarget: true }
-});
-```
+### 5.5 Add a task-dependency model
+
+Tasks have dependencies (T-002 depends on T-001). task-management must not emit `TaskCreated` for a task whose dependencies aren't complete. This is a simple topological sort + status check.
 
 ---
 
-## 7. What the gate evaluator does right (and why it doesn't matter yet)
+## 6. The pre-assigned agents question
 
-The gate evaluator (`gate-evaluator.ts`, 197 LOC, 17 tests) is **correct**:
+"Could we use pre-assigned agents?"
 
-- ✅ Evaluates artifact gate + MBO gate as co-equal
-- ✅ Handles planned-gap declarations (path c)
-- ✅ Handles lens reviews (Phase 2)
-- ✅ Produces the right verdict: proceed / remedy / blocked / backward
-- ✅ Pure function — fully testable without Redis
+**No, and the design already rejected this.** Decision 2 (distinct handles) means agents are spawned on-demand per feature, not pre-assigned. The Web Dev Unit has 1 base persona (`@web-architect-agent`). For the stock dashboard, you'd spawn `@web-architect-agent-2` for the frontend task. You don't pre-assign because:
 
-But it's **fed empty input**. Every `PhaseGateCheck` in the real system has `mboMetrics: []` and `plannedGaps: []`. The evaluator correctly returns `proceed` because there are no missing metrics — but that's a *vacuous pass*, not a *real pass*. The gate is doing its job; the pipeline just isn't giving it data.
+1. You don't know which features are coming.
+2. Different features need different numbers of instances.
+3. An idle pre-assigned agent is wasted capacity.
 
-**This is the single highest-leverage fix in the system.** One assignments loader + three wiring points turns the MBO framework from inert to live.
+**But:** the *capability catalog* is pre-defined. Each skill file declares what an agent can do. The assigner matches task capability to skill-file-declared capability, then spawns if needed. This is the right model — pre-define *capabilities*, spawn *instances* on demand.
 
 ---
 
-## 8. Metric types — a hidden design issue
+## 7. Summary of the gap
 
-The assignments file mixes three kinds of metrics, and the gate evaluator treats them all the same way:
-
-| Type | Example | Problem |
-|------|---------|---------|
-| **Continuous** | 99.9% uptime, sub-200ms API | `onTarget` is a boolean — no notion of "close but not quite" |
-| **Categorical** | WCAG 2.1 AA, Zero critical vulns | "Zero" is a count, not a threshold — the gate can't distinguish "0 found" from "not checked" |
-| **Rate-based** | 4 prototypes/quarter, 5 insights/month | These are *output* metrics, not *quality* metrics — they measure throughput, not phase exit |
-
-The gate evaluator's `onTarget: boolean` is too coarse for continuous metrics. A 99.8% uptime (miss by 0.1%) gets the same `backward` verdict as a 50% uptime. The planned-gap path (c) handles this gracefully — the agent declares the gap — but the *measurement* side has no concept of severity.
-
-**Recommendation:** add a `severity` field to `MboMetricReport` (`"minor" | "major" | "critical"`) so the gate can distinguish "slightly off, declared as planned gap" from "catastrophically off, backward intent required."
+| Question | Answer |
+|----------|--------|
+| Is it reasonable to have metrics before knowing what to measure? | **No.** Unit standing MBOs are known upfront but are the wrong granularity. Feature MBOs must be derived in Phase 1. |
+| Could we use hardcoded MBOs? | **For unit standing targets, yes** (they're a Phase 7 review checklist). **For feature gates, no** — they'd block on irrelevant metrics (SEO for an internal dashboard). |
+| Could we use pre-assigned agents? | **No.** Capabilities are pre-defined; instances are spawned on demand. |
+| How does a project get decomposed to granular tasks? | **PM Agent in Phase 1**, using the /office-hours protocol, produces a task-spec list from the scope doc. |
+| Who assigns? | **task-management** mechanically matches task specs to agent instances by capability, spawning when no match exists. |
+| What's the biggest gap? | **The decomposition + assignment pipeline doesn't exist.** Agents are spawned and sit idle. No service emits `TaskCreated`. No service matches capabilities. This is the M4 blocker. |
 
 ---
 
-## 9. The assignment → agent → gate → carry-forward loop
+## Revision history
 
-This is the full lifecycle of an MBO metric, traced end-to-end:
-
-```text
-                        assignments/teamelite-2025.json
-                                    │
-                         loadUnitAssignment()
-                                    │
-                        ┌───────────▼───────────┐
-                        │  FeatureSubmitted      │
-                        │  scopeDoc.mboTargets   │
-                        └───────────┬───────────┘
-                                    │
-                        ┌───────────▼───────────┐
-                        │  TaskCreated           │
-                        │  mboMetrics: [...]     │  ← currently empty (G1/G2)
-                        └───────────┬───────────┘
-                                    │
-                        ┌───────────▼───────────┐
-                        │  seed-context.ts       │
-                        │  injects into prompt   │  ← currently "(none specified)"
-                        └───────────┬───────────┘
-                                    │
-                              agent works
-                              declares gaps
-                                    │
-                        ┌───────────▼───────────┐
-                        │  PhaseGateCheck        │
-                        │  mboMetrics: [...]     │  ← currently empty (G5)
-                        │  plannedGaps: [...]    │  ← currently empty (G6)
-                        └───────────┬───────────┘
-                                    │
-                        ┌───────────▼───────────┐
-                        │  gate-evaluator.ts     │
-                        │  evaluates both gates  │  ← correct, but vacuous pass
-                        └───────────┬───────────┘
-                                    │
-                         verdict: proceed
-                         (because nothing to fail)
-                                    │
-                        ┌───────────▼───────────┐
-                        │  Phase 7: Analysis     │
-                        │  MBO gaps → Phase 1    │  ← no gaps to carry (G3)
-                        └───────────────────────┘
-```
-
-The loop is structurally complete — every arrow exists in the design. But the data flow is broken at three points (G1, G5, G6), making the entire loop inert.
-
----
-
-## 10. Summary
-
-| Dimension | Status |
-|-----------|--------|
-| **Contract definition** | ✅ Complete — 23 metrics, 9 units, lifecycle gates, intent payloads |
-| **Gate evaluator logic** | ✅ Correct — 17 tests, pure function, handles all 3 paths |
-| **Assignments file** | ✅ Present — well-structured, 23 metrics |
-| **Runtime loading** | ❌ Missing — no code reads the file (G1) |
-| **Metric injection into tasks** | ❌ Missing — hardcoded empty arrays (G5) |
-| **Planned-gap aggregation** | ❌ Missing — no collection mechanism (G6) |
-| **Measurement & reporting** | ❌ Missing — no MboMetricReport emission (G4) |
-| **Baseline recording** | ❌ Missing — no storage (G3) |
-| **Metric type sophistication** | ⚠️ Insufficient — boolean onTarget, no severity |
-| **Multi-project support** | ⚠️ Not designed — single static snapshot (G7) |
-
-**One-line verdict:** The MBO framework is the platform's defining feature, and it's contractually complete but runtime-inert. Three wiring fixes (one loader module + three insertion points) turn it live. That's the highest-leverage work remaining.
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-06-25 | `@architect-agent` (via Zo) | Initial deepdive from the assignment/decomposition question |
