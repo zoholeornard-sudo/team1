@@ -239,41 +239,41 @@ export class BusClient {
 
     while (true) {
       try {
-        // Read new messages from the consumer group
-        const messages = await (this.redis as any).xReadGroup(
-          groupName,
-          consumerName,
-          { key: stream, id: ">" },
-          { BLOCK: 1000 }
-        );
+        // Use raw command because redis v6 client's xReadGroup object API is broken in Bun
+        const raw = await (this.redis as any).sendCommand([
+          "XREADGROUP", "GROUP", groupName, consumerName,
+          "COUNT", "10", "BLOCK", "1000",
+          "STREAMS", stream, ">"
+        ]);
 
-        if (!messages) {
+        if (!raw || raw.length === 0) {
           // Timeout; continue polling
           continue;
         }
 
-        // messages is an array of [stream, [[id, [field, value, ...]], ...]]
-        for (const [, streamMessages] of messages) {
-          for (const [intentId, fields] of streamMessages) {
+        // raw = [ [streamName, [[id, [field, value, ...]], ...]] ]
+        for (const streamEntry of raw) {
+          const streamName = streamEntry[0];
+          const messages = streamEntry[1];
+          if (!messages) continue;
+          for (const msg of messages) {
+            const intentId = msg[0];
+            const fields = msg[1];
             try {
-              // Redis returns fields as a flat array: [field1, val1, field2, val2, ...]
-              // Convert to object: { field1: val1, field2: val2, ... }
-              const payload = fields[0] || "{}"; // payload field
+              const payload = fields[0] || "{}";
               const intent = JSON.parse(payload) as IntentEnvelope<any>;
               yield [intentId, intent] as const;
             } catch (parseErr) {
               console.error(
-                `[BusClient] Failed to parse intent from ${stream}:${intentId}:`,
+                `[BusClient] Failed to parse intent from ${streamName}:${intentId}:`,
                 parseErr
               );
-              // Send to dead-letter queue (optional; for now, just log)
-              await this.ack(stream, groupName, intentId);
+              await this.ack(streamName, groupName, intentId);
             }
           }
         }
       } catch (err) {
         console.error(`[BusClient] Error consuming from ${stream}:`, err);
-        // Wait before retrying
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
