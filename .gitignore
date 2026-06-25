@@ -15,7 +15,8 @@ out/
 orchestrator/data/*.db
 orchestrator/data/*.db-journal
 orchestrator/data/*.db-shm
-orchestrator/data/*.db-wal*.rdb
+orchestrator/data/*.db-wal
+*.rdb
 
 # Logs
 *.log
