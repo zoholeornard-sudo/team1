@@ -37,6 +37,12 @@ describe.skipIf(!apiUp)("Spawn & Assign (M2 — requires running services)", () 
   let spawnResponse: any = null;
 
   beforeAll(async () => {
+    // Ensure clean repo state (M3 test may leave uncommitted changes)
+    try {
+      await $`git -C ${REPO_ROOT} checkout main 2>/dev/null || true`;
+      await $`git -C ${REPO_ROOT} stash 2>/dev/null || true`;
+    } catch {}
+
     // Spawn 3 instances of @architect-agent
     const resp = await fetch(`${API_URL}/agents/spawn`, {
       method: "POST",
@@ -54,6 +60,10 @@ describe.skipIf(!apiUp)("Spawn & Assign (M2 — requires running services)", () 
       signal: AbortSignal.timeout(15000),
     });
     spawnResponse = await resp.json();
+    // If spawn failed, log the actual response for debugging
+    if (!spawnResponse.status) {
+      console.error("[spawn.test] spawn failed — response:", JSON.stringify(spawnResponse));
+    }
     // Track branches for cleanup
     if (spawnResponse.instances) {
       for (const inst of spawnResponse.instances) {
