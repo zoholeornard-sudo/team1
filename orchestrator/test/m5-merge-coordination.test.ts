@@ -95,10 +95,12 @@ describe("M5 multi-feature merge coordination", () => {
   });
 
   it("can-deploy returns blocked=true when dependency not at Phase 7", async () => {
-    const body = await canDeploy("m5-beta");
+    // Use a fresh dependency chain: m5-gamma depends on m5-pending (not advanced)
+    await declareDependency("m5-gamma", "m5-pending");
+    const body = await canDeploy("m5-gamma");
     expect(body.canDeploy).toBe(false);
     expect(body.blockedBy.length).toBeGreaterThan(0);
-    expect(body.blockedBy[0].feature).toBe("m5-alpha");
+    expect(body.blockedBy[0].feature).toBe("m5-pending");
   });
 
   it("can-deploy returns ok=true when dependency has Phase 7 = passed", async () => {
