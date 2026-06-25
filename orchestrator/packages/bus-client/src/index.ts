@@ -241,15 +241,10 @@ export class BusClient {
       try {
         // Read new messages from the consumer group
         const messages = await (this.redis as any).xReadGroup(
-          {
-            key: stream,
-            id: ">",
-          },
-          {
-            GROUP: groupName,
-            CONSUMER: consumerName,
-            BLOCK: 1000,
-          }
+          groupName,
+          consumerName,
+          { key: stream, id: ">" },
+          { BLOCK: 1000 }
         );
 
         if (!messages) {
