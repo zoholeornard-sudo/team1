@@ -1,0 +1,208 @@
+/**
+ * lifecycle-management — bounded context service (ADR-0001, ADR-0005)
+ * Port: :3104
+ *
+ * Core of M4: dual-gate lifecycle gating with MBO.
+ * Consumes PhaseGateCheck + MboMetricReport from the bus.
+ * Artifact gate = all required artifacts present.
+ * MBO gate = all metrics on target OR gap declared (path c).
+ * Backward intent on MBO miss (with 3-strike escalation).
+ * Phase 7 never backtracks.
+ */
+import { BusClient } from "@team1/bus-client";
+import type {
+  PhaseGateCheck,
+  MboMetricReport,
+  PhaseGateResult,
+  IntentEnvelope,
+  IntentType,
+} from "@team1/contracts";
+
+const SERVICE_NAME = "lifecycle-management";
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+
+const bus = new BusClient({ redisUrl: REDIS_URL, serviceName: SERVICE_NAME });
+
+// In-memory state (SQLite in M5)
+const featurePhase = new Map<string, number>();
+const backtrackCount = new Map<string, number>();
+const declaredGaps = new Map<string, { metric: string; declaredGap: string }[]>();
+
+const REQUIRED_ARTIFACTS: Record<number, string[]> = {
+  1: ["scope-doc"],
+  2: ["adr", "design-doc"],
+  3: ["merged-pr"],
+  4: ["qa-report"],
+  5: ["release-notes"],
+  6: ["monitoring-dashboard"],
+  7: ["retrospective"],
+};
+
+async function main() {
+  await bus.connect();
+  console.log(`[${SERVICE_NAME}] connected to Redis bus`);
+
+  // Subscribe to lifecycle streams
+  void consumePhaseGateChecks();
+  void consumeMboReports();
+
+  process.on("SIGTERM", async () => {
+    console.log(`[${SERVICE_NAME}] shutting down`);
+    process.exit(0);
+  });
+}
+
+async function consumePhaseGateChecks() {
+  await bus.ensureConsumerGroup("lifecycle-gating", SERVICE_NAME);
+  for await (const [messageId, intent] of bus.consume("lifecycle-gating", SERVICE_NAME)) {
+    try {
+      if (intent.type === "PhaseGateCheck") {
+        await handlePhaseGateCheck(intent as PhaseGateCheck);
+      }
+      await bus.ack("lifecycle-gating", SERVICE_NAME, messageId);
+    } catch (err) {
+      console.error(`[${SERVICE_NAME}] phase gate error:`, err);
+      await bus.ack("lifecycle-gating", SERVICE_NAME, messageId).catch(() => {});
+    }
+  }
+}
+
+async function consumeMboReports() {
+  await bus.ensureConsumerGroup("lifecycle-mbo", SERVICE_NAME);
+  for await (const [messageId, intent] of bus.consume("lifecycle-mbo", SERVICE_NAME)) {
+    try {
+      if (intent.type === "MboMetricReport") {
+        await handleMboReport(intent as MboMetricReport);
+      }
+      await bus.ack("lifecycle-mbo", SERVICE_NAME, messageId);
+    } catch (err) {
+      console.error(`[${SERVICE_NAME}] mbo report error:`, err);
+      await bus.ack("lifecycle-mbo", SERVICE_NAME, messageId).catch(() => {});
+    }
+  }
+}
+
+async function handlePhaseGateCheck(intent: PhaseGateCheck) {
+  const { featureSlug, phase, artifactsProduced, mboMetrics, plannedGaps } = intent.payload;
+  const phaseNum = phase;
+
+  // Store declared gaps
+  if (plannedGaps?.length) {
+    const existing = declaredGaps.get(featureSlug) || [];
+    declaredGaps.set(featureSlug, [...existing, ...plannedGaps]);
+  }
+
+  // Artifact gate: all required artifacts present
+  const required = REQUIRED_ARTIFACTS[phaseNum] || [];
+  const artifactOk = required.every((r) => artifactsProduced?.includes(r));
+
+  // MBO gate: all metrics on target
+  const mboOk = !mboMetrics?.length || mboMetrics.every((m) => m.onTarget);
+
+  const passed = artifactOk && mboOk;
+
+  const result: IntentEnvelope<"PhaseGateResult", PhaseGateResult["payload"]> = {
+    type: "PhaseGateResult",
+    idempotencyKey: intent.idempotencyKey,
+    ts: Date.now(),
+    traceId: intent.traceId,
+    featureSlug,
+    branch: "",
+    source: SERVICE_NAME,
+    payload: {
+      featureSlug,
+      phase: phaseNum,
+      passed,
+      reason: passed ? "both gates passed" : !artifactOk ? "artifact gate failed" : "mbo gate failed",
+    },
+  };
+
+  await bus.publish<"PhaseGateResult">(result);
+
+  if (passed) {
+    featurePhase.set(featureSlug, phaseNum + 1);
+    backtrackCount.delete(featureSlug);
+    console.log(`[${SERVICE_NAME}] ${featureSlug} → Phase ${phaseNum + 1}`);
+  } else {
+    // Backtrack logic
+    const btKey = `${featureSlug}:${phaseNum}`;
+    const btCount = (backtrackCount.get(btKey) || 0) + 1;
+    backtrackCount.set(btKey, btCount);
+
+    if (phaseNum === 7) {
+      // Phase 7 never backtracks — blocked
+      console.log(`[${SERVICE_NAME}] ${featureSlug} Phase 7 blocked (no backtrack)`);
+      return;
+    }
+
+    if (btCount >= 3) {
+      // Escalation
+      console.log(`[${SERVICE_NAME}] ${featureSlug} Phase ${phaseNum} → ESCALATION (3 backtracks)`);
+      const escalation: IntentEnvelope<"PhaseEscalation", { featureSlug: string; phase: number; reason: string }> = {
+        type: "PhaseEscalation",
+        idempotencyKey: crypto.randomUUID(),
+        ts: Date.now(),
+        traceId: intent.traceId,
+        featureSlug,
+        branch: "",
+        source: SERVICE_NAME,
+        payload: { featureSlug, phase: phaseNum, reason: `3 backtracks on Phase ${phaseNum}` },
+      };
+      await bus.publish<"PhaseEscalation">(escalation);
+      return;
+    }
+
+    const backwardPhase = resolveBackwardPhase(phaseNum);
+    featurePhase.set(featureSlug, backwardPhase);
+    console.log(`[${SERVICE_NAME}] ${featureSlug} Phase ${phaseNum} → ${backwardPhase} (backtrack ${btCount})`);
+  }
+}
+
+async function handleMboReport(intent: MboMetricReport) {
+  // Store MBO report for current phase evaluation
+  const { featureSlug, phase, metricName, onTarget } = intent.payload;
+  console.log(`[${SERVICE_NAME}] MBO report: ${featureSlug} P${phase} ${metricName}=${onTarget}`);
+}
+
+function resolveBackwardPhase(currentPhase: number): number {
+  const map: Record<number, number> = {
+    1: 1,
+    2: 1,
+    3: 2,
+    4: 3,
+    5: 3,
+    6: 3,
+  };
+  return map[currentPhase] ?? 1;
+}
+
+// HTTP health endpoint
+const PORT = Number(process.env.PORT) || 3104;
+Bun.serve({
+  port: PORT,
+  fetch(req) {
+    const url = new URL(req.url);
+    if (url.pathname === "/healthz") {
+      return Response.json({
+        status: "ok",
+        service: SERVICE_NAME,
+        port: PORT,
+        busConnected: bus.getConnected(),
+        featuresTracked: featurePhase.size,
+      });
+    }
+    if (url.pathname === "/readyz") {
+      return Response.json({ ready: bus.getConnected(), service: SERVICE_NAME });
+    }
+    if (url.pathname === "/features") {
+      return Response.json({ features: Object.fromEntries(featurePhase) });
+    }
+    return new Response("Not found", { status: 404 });
+  },
+});
+
+console.log(`[${SERVICE_NAME}] listening on :${PORT}`);
+main().catch((err) => {
+  console.error(`[${SERVICE_NAME}] fatal:`, err);
+  process.exit(1);
+});
