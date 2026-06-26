@@ -123,8 +123,18 @@ export async function scrapeProgress(dir: string): Promise<ScrapeResult> {
       totalArtifacts += report.artifactsProduced.length;
       totalBlockers += typeof report.blockers === "number" ? report.blockers : 0;
 
-      // Group by feature slug (embedded in handle or parent dir)
-      const featureSlug = entry.name.split("-").slice(0, -1).join("-") || "unknown";
+      // Group by feature slug — match any file whose name starts with the slug
+      // (e.g. "m6-test-1782517174811-architect-agent-2.md" → slug "m6-test-1782517174811")
+      let featureSlug = "unknown";
+      const nameNoExt = entry.name.replace(/\.md$/, "");
+      // Try to find a matching feature slug prefix (anything before the last two handle segments)
+      const segments = nameNoExt.split("-");
+      if (segments.length >= 3) {
+        // Last two segments are typically "agent-N" or "handle-N"
+        featureSlug = segments.slice(0, -2).join("-");
+      } else {
+        featureSlug = nameNoExt;
+      }
       let feature = features.find((f) => f.featureSlug === featureSlug);
       if (!feature) {
         feature = {

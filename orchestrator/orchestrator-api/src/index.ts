@@ -299,8 +299,13 @@ const server = Bun.serve({
     if (historyMatch && req.method === "GET") {
       const featureSlug = historyMatch[1];
       try {
-        const result = await scrapeProgress(featureSlug, REPO_ROOT);
-        return Response.json(result);
+        const progressDir = `${REPO_ROOT}/00_workspace/working_files/progress`;
+        const result = await scrapeProgress(progressDir);
+        const feature = result.features.find((f) => f.featureSlug === featureSlug);
+        if (!feature) {
+          return Response.json({ error: "Feature not found", featureSlug }, { status: 404 });
+        }
+        return Response.json(feature);
       } catch (err: any) {
         return Response.json({ error: err.message }, { status: 500 });
       }
