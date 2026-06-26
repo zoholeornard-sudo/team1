@@ -6,6 +6,7 @@
  * git branches, progress files, and registry entries.
  */
 import { BusClient } from "@team1/bus-client";
+import { scrapeProgress } from "./history-scraper.js";
 
 
 const PORT = Number(process.env.PORT) || 3098;
@@ -290,6 +291,24 @@ const server = Bun.serve({
         feature: dependsMatch[1],
         dependsOn: dependsMatch[2],
       });
+    }
+
+
+    // GET /history/:featureSlug — M6: history scraper
+    const historyMatch = path.match(/^\/history\/([^/]+)$/);
+    if (historyMatch && req.method === "GET") {
+      const featureSlug = historyMatch[1];
+      try {
+        const result = await scrapeProgress(featureSlug, REPO_ROOT);
+        return Response.json(result);
+      } catch (err: any) {
+        return Response.json({ error: err.message }, { status: 500 });
+      }
+    }
+
+    // GET /history — all features (debug)
+    if (path === "/history" && req.method === "GET") {
+      return Response.json({ message: "Use /history/:featureSlug" }, { status: 400 });
     }
 
     return new Response("Not found", { status: 404 });
