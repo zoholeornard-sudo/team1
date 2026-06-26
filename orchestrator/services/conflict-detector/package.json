@@ -1,0 +1,17 @@
+{
+  "name": "@orchestrator/conflict-detector",
+  "version": "0.1.0",
+  "description": "Conflict detection service — detects contradictory proposals, spawns backup agents",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@orchestrator/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

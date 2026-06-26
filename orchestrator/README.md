@@ -27,10 +27,10 @@ bun install
 bun run boot:bus          # starts Redis on :6379
 ```
 
-### Boot all 6 services + runtime + API
+### Boot all 10 services + runtime + API
 
 ```bash
-bun run boot:services    # starts :3101–:3109
+bun run boot:services    # starts :3101–:3112
 ```
 
 ### Verify health
@@ -45,6 +45,11 @@ curl -s http://localhost:3106/health | jq   # edit-coordinator
 curl -s http://localhost:3107/health | jq   # agent-registry
 curl -s http://localhost:3108/health | jq   # orchestrator-api
 curl -s http://localhost:3109/health | jq   # runtime
+curl -s http://localhost:3110/health | jq   # workflow (P2)
+curl -s http://localhost:3111/health | jq   # manager-loop (P1)
+curl -s http://localhost:3112/health | jq   # review-scheduler (P3)
+curl -s http://localhost:3113/health | jq   # conflict-detector (P4)
+curl -s http://localhost:3114/health | jq   # metric-alert (P5)
 ```
 
 ---
@@ -62,6 +67,11 @@ curl -s http://localhost:3109/health | jq   # runtime
 | agent-registry | 3107 | `http://localhost:3107/health` | `{ service, status }` |
 | orchestrator-api | 3108 | `http://localhost:3108/health` | `{ service, status }` |
 | runtime | 3109 | `http://localhost:3109/health` | `{ service, status, model }` |
+| workflow | 3110 | `http://localhost:3110/health` | `{ service, status, port }` |
+| manager-loop | 3111 | `http://localhost:3111/health` | `{ service, status, port }` |
+| review-scheduler | 3112 | `http://localhost:3112/health` | `{ service, status, port }` |
+| conflict-detector | 3113 | `http://localhost:3113/health` | `{ service, status, port }` |
+| metric-alert | 3114 | `http://localhost:3114/health` | `{ service, status, port }` |
 
 ---
 
@@ -92,7 +102,12 @@ orchestrator/
 │   ├── health-monitoring/      # :3103 — staleness, reap decisions
 │   ├── lifecycle-management/   # :3104 — phase gates, MBO gating, planned-gap tracking
 │   ├── event-coordination/     # :3105 — cross-service intent routing + validation
-│   └── edit-coordinator/       # :3106 — branch lock, edit-intent apply, commit
+│   ├── edit-coordinator/       # :3106 — branch lock, edit-intent apply, commit
+│   ├── workflow/               # :3110 — Plan/Workflow entity, task decomposition (P2)
+│   ├── manager-loop/           # :3111 — recurring coordination, stall detection (P1)
+│   ├── review-scheduler/       # :3112 — periodic MBO reviews (P3)
+│   ├── conflict-detector/      # :3113 — contradictory proposals, backup agents (P4)
+│   └── metric-alert/           # :3114 — metric thresholds, actionable alerts (P5)
 ├── runtime/                # Agent session supervisor (polling-agent model, §2.1)
 ├── agent-registry/         # :3107 — persona metadata, instance ledger, Manager authority
 ├── orchestrator-api/       # :3108 — REST entry point (FeatureSubmitted, SpawnAgents)
