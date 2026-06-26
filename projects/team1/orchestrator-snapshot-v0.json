@@ -1,0 +1,50 @@
+[
+  {
+    "snapshotVersion": "v0",
+    "timestamp": "2026-06-26T23:49:22Z",
+    "orchestrator": {
+      "services": [
+        {"name": "edit-coordinator", "path": "/workspaces/team1/orchestrator/services/edit-coordinator/"},
+        {"name": "event-coordination", "path": "/workspaces/team1/orchestrator/services/event-coordination/"},
+        {"name": "health-monitoring", "path": "/workspaces/team1/orchestrator/services/health-monitoring/"},
+        {"name": "lifecycle-management", "path": "/workspaces/team1/orchestrator/services/lifecycle-management/"},
+        {"name": "manager-loop", "path": "/workspaces/team1/orchestrator/services/manager-loop/"},
+        {"name": "review-scheduler", "path": "/workspaces/team1/orchestrator/services/review-scheduler/"},
+        {"name": "session-management", "path": "/workspaces/team1/orchestrator/services/session-management/"},
+        {"name": "task-management", "path": "/workspaces/team1/orchestrator/services/task-management/"},
+        {"name": "workflow", "path": "/workspaces/team1/orchestrator/services/workflow/"}
+      ],
+      "intentTypes": [
+
+      ],
+      "adrs": [
+        {"file": "docs/adr/0001-bounded-contexts-as-processes.md"},
+        {"file": "docs/adr/0002-redis-streams-intent-bus.md"},
+        {"file": "docs/adr/0003-branch-lock-edit-intent-applier.md"},
+        {"file": "docs/adr/0004-polling-agent-execution-model.md"}
+      ],
+      "redisKeyspaces": [
+        "data",
+        "idem:",
+        "intents:acquire-checkout",
+        "intents:agent-assigned",
+        "intents:checkout-denied",
+        "intents:dead-letter",
+        "intents:edit-applied",
+        "intents:edit-intent",
+        "intents:feature-submitted",
+        "intents:heartbeat",
+        "intents:instance-stalled",
+        "intents:merge-conflict-detected",
+        "intents:phase-gate-check",
+        "intents:phase-gate-failed",
+        "intents:phase-gate-passed",
+        "intents:reap-instance",
+        "intents:session-started",
+        "intents:spawn-agents",
+        "intents:task-completed",
+        "intents:task-created"
+      ]
+    }
+  }
+]

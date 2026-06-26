@@ -37,7 +37,22 @@ export type IntentType =
   // Lifecycle escalation (v1.1.0 §11.2 — backtrack counter)
   | "PhaseEscalation"
   // Bus hygiene
-  | "DeadLetter";
+  | "DeadLetter"
+  // Workflow service (P2 — refinement plan)
+  | "WorkflowCreated"
+  | "WorkflowTaskStateChanged"
+  // Manager loop (P1 — refinement plan)
+  | "ManagerHeartbeat"
+  | "ReassignTask"
+  | "ScopeChangeRequest"
+  // Review scheduler (P3 — refinement plan)
+  | "ReviewRequested"
+  | "ReviewReport"
+  // Conflict handling (P4 — refinement plan)
+  | "ConflictDetected"
+  | "BackupAgentSpawned"
+  // Metric alerts (P5 — refinement plan)
+  | "MetricAlert";
 
 export type EditOp = "create" | "update" | "delete" | "progress";
 
@@ -244,3 +259,110 @@ export type TestFailed = IntentEnvelope<"TestFailed", TestFailedPayload>;
 export type EditReverted = IntentEnvelope<"EditReverted", EditRevertedPayload>;
 export type PhaseEscalation = IntentEnvelope<"PhaseEscalation", PhaseEscalationPayload>;
 export type DeadLetter = IntentEnvelope<"DeadLetter", DeadLetterPayload>;
+
+// --- Workflow service (P2) ---
+
+export interface WorkflowCreatedPayload {
+  workflowId: string;
+  featureSlug: string;
+  tasks: Array<{
+    taskId: string;
+    taskOrder: number;
+    phase: string;
+    description: string;
+    acceptanceCriteria: string[];
+    mboMetrics: { name: string; target: string }[];
+  }>;
+}
+
+export interface WorkflowTaskStateChangedPayload {
+  workflowId: string;
+  taskId: string;
+  previousState: string;
+  newState: string;
+  assignedInstance?: string;
+}
+
+// --- Manager loop (P1) ---
+
+export interface ManagerHeartbeatPayload {
+  managerHandle: string;
+  timestamp: string;
+  activeWorkflows: number;
+  stalledAgents: Array<{ instanceId: string; lastHeartbeatAgeMs: number }>;
+}
+
+export interface ReassignTaskPayload {
+  workflowId: string;
+  taskId: string;
+  fromInstance: string;
+  toInstance: string;
+  reason: string;
+}
+
+export interface ScopeChangeRequestPayload {
+  workflowId: string;
+  requestedBy: string;
+  changeType: "add_task" | "remove_task" | "modify_acceptance" | "change_phase_target";
+  details: Record<string, unknown>;
+}
+
+// --- Review scheduler (P3) ---
+
+export interface ReviewRequestedPayload {
+  workflowId: string;
+  featureSlug: string;
+  reviewTurn: number;
+  metricsSnapshot: Array<{ name: string; value: string; target: string; onTarget: boolean }>;
+}
+
+export interface ReviewReportPayload {
+  workflowId: string;
+  featureSlug: string;
+  reviewTurn: number;
+  overallStatus: "on_track" | "at_risk" | "off_track";
+  findings: string[];
+  recommendations: string[];
+}
+
+// --- Conflict handling (P4) ---
+
+export interface ConflictDetectedPayload {
+  workflowId: string;
+  taskId: string;
+  conflictingInstances: string[];
+  conflictType: "contradictory_output" | "duplicate_work" | "resource_contention";
+  details: string;
+}
+
+export interface BackupAgentSpawnedPayload {
+  workflowId: string;
+  taskId: string;
+  primaryInstance: string;
+  backupInstance: string;
+  reason: string;
+}
+
+// --- Metric alerts (P5) ---
+
+export interface MetricAlertPayload {
+  featureSlug: string;
+  metricName: string;
+  currentValue: string;
+  targetValue: string;
+  threshold: "warning" | "critical";
+  recommendedAction: string;
+}
+
+// --- Typed intent aliases (new) ---
+
+export type WorkflowCreated = IntentEnvelope<"WorkflowCreated", WorkflowCreatedPayload>;
+export type WorkflowTaskStateChanged = IntentEnvelope<"WorkflowTaskStateChanged", WorkflowTaskStateChangedPayload>;
+export type ManagerHeartbeat = IntentEnvelope<"ManagerHeartbeat", ManagerHeartbeatPayload>;
+export type ReassignTask = IntentEnvelope<"ReassignTask", ReassignTaskPayload>;
+export type ScopeChangeRequest = IntentEnvelope<"ScopeChangeRequest", ScopeChangeRequestPayload>;
+export type ReviewRequested = IntentEnvelope<"ReviewRequested", ReviewRequestedPayload>;
+export type ReviewReport = IntentEnvelope<"ReviewReport", ReviewReportPayload>;
+export type ConflictDetected = IntentEnvelope<"ConflictDetected", ConflictDetectedPayload>;
+export type BackupAgentSpawned = IntentEnvelope<"BackupAgentSpawned", BackupAgentSpawnedPayload>;
+export type MetricAlert = IntentEnvelope<"MetricAlert", MetricAlertPayload>;
