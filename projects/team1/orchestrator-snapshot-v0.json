@@ -156,9 +156,9 @@
         "M1": "complete \u2014 bus boot + all 14 services healthy",
         "M2": "complete \u2014 Spawn & Assign flow verified end-to-end",
         "M3": "complete \u2014 Tier 1 git ops + Tier 2 test trigger + real commit SHAs",
-        "M4": "not started",
-        "M5": "not started",
-        "M6": "not started"
+        "M4": "complete \u2014 dual-gate lifecycle with MBO, backtrack counter, Phase 7 no-backtrack",
+        "M5": "complete \u2014 feature dependency API, can-deploy check",
+        "M6": "complete \u2014 reap handler, reap history audit trail"
       }
     }
   }
