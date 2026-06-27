@@ -1,27 +1,75 @@
 [
   {
-    "snapshotVersion": "v1",
-    "timestamp": "2026-06-27T01:10:00Z",
+    "snapshotVersion": "v1.1",
+    "timestamp": "2026-06-27T01:20:00Z",
     "orchestrator": {
       "services": [
-        {"name": "orchestrator-api", "path": "/workspaces/team1/orchestrator/orchestrator-api/"},
-        {"name": "runtime", "path": "/workspaces/team1/orchestrator/runtime/"},
-        {"name": "agent-registry", "path": "/workspaces/team1/orchestrator/agent-registry/"},
-        {"name": "task-management", "path": "/workspaces/team1/orchestrator/services/task-management/"},
-        {"name": "session-management", "path": "/workspaces/team1/orchestrator/services/session-management/"},
-        {"name": "health-monitoring", "path": "/workspaces/team1/orchestrator/services/health-monitoring/"},
-        {"name": "lifecycle-management", "path": "/workspaces/team1/orchestrator/services/lifecycle-management/"},
-        {"name": "event-coordination", "path": "/workspaces/team1/orchestrator/services/event-coordination/"},
-        {"name": "edit-coordinator", "path": "/workspaces/team1/orchestrator/services/edit-coordinator/"},
-        {"name": "workflow", "path": "/workspaces/team1/orchestrator/services/workflow/"},
-        {"name": "manager-loop", "path": "/workspaces/team1/orchestrator/services/manager-loop/"},
-        {"name": "review-scheduler", "path": "/workspaces/team1/orchestrator/services/review-scheduler/"},
-        {"name": "conflict-detector", "path": "/workspaces/team1/orchestrator/services/conflict-detector/"},
-        {"name": "metric-alert", "path": "/workspaces/team1/orchestrator/services/metric-alert/"}
+        {
+          "name": "orchestrator-api",
+          "path": "/workspaces/team1/orchestrator/orchestrator-api/"
+        },
+        {
+          "name": "runtime",
+          "path": "/workspaces/team1/orchestrator/runtime/"
+        },
+        {
+          "name": "agent-registry",
+          "path": "/workspaces/team1/orchestrator/agent-registry/"
+        },
+        {
+          "name": "task-management",
+          "path": "/workspaces/team1/orchestrator/services/task-management/"
+        },
+        {
+          "name": "session-management",
+          "path": "/workspaces/team1/orchestrator/services/session-management/"
+        },
+        {
+          "name": "health-monitoring",
+          "path": "/workspaces/team1/orchestrator/services/health-monitoring/"
+        },
+        {
+          "name": "lifecycle-management",
+          "path": "/workspaces/team1/orchestrator/services/lifecycle-management/"
+        },
+        {
+          "name": "event-coordination",
+          "path": "/workspaces/team1/orchestrator/services/event-coordination/"
+        },
+        {
+          "name": "edit-coordinator",
+          "path": "/workspaces/team1/orchestrator/services/edit-coordinator/"
+        },
+        {
+          "name": "workflow",
+          "path": "/workspaces/team1/orchestrator/services/workflow/"
+        },
+        {
+          "name": "manager-loop",
+          "path": "/workspaces/team1/orchestrator/services/manager-loop/"
+        },
+        {
+          "name": "review-scheduler",
+          "path": "/workspaces/team1/orchestrator/services/review-scheduler/"
+        },
+        {
+          "name": "conflict-detector",
+          "path": "/workspaces/team1/orchestrator/services/conflict-detector/"
+        },
+        {
+          "name": "metric-alert",
+          "path": "/workspaces/team1/orchestrator/services/metric-alert/"
+        }
       ],
       "packages": [
-        {"name": "@orchestrator/contracts", "path": "/workspaces/team1/orchestrator/packages/contracts/"},
-        {"name": "@orchestrator/bus-client", "path": "/workspaces/team1/orchestrator/packages/bus-client/"}
+        {
+          "name": "@orchestrator/contracts",
+          "path": "/workspaces/team1/orchestrator/packages/contracts/"
+        },
+        {
+          "name": "@orchestrator/bus-client",
+          "path": "/workspaces/team1/orchestrator/packages/bus-client/"
+        }
       ],
       "intentTypes": [
         "FeatureSubmitted",
@@ -58,10 +106,18 @@
         "MetricAlert"
       ],
       "adrs": [
-        {"file": "docs/adr/0001-bounded-contexts-as-processes.md"},
-        {"file": "docs/adr/0002-redis-streams-intent-bus.md"},
-        {"file": "docs/adr/0003-branch-lock-edit-intent-applier.md"},
-        {"file": "docs/adr/0004-polling-agent-execution-model.md"}
+        {
+          "file": "docs/adr/0001-bounded-contexts-as-processes.md"
+        },
+        {
+          "file": "docs/adr/0002-redis-streams-intent-bus.md"
+        },
+        {
+          "file": "docs/adr/0003-branch-lock-edit-intent-applier.md"
+        },
+        {
+          "file": "docs/adr/0004-polling-agent-execution-model.md"
+        }
       ],
       "redisKeyspaces": [
         "data",
@@ -97,9 +153,9 @@
       ],
       "milestones": {
         "M0": "complete",
-        "M1": "complete — bus boot + all 14 services healthy",
-        "M2": "complete — Spawn & Assign flow verified end-to-end",
-        "M3": "not started",
+        "M1": "complete \u2014 bus boot + all 14 services healthy",
+        "M2": "complete \u2014 Spawn & Assign flow verified end-to-end",
+        "M3": "complete \u2014 Tier 1 git ops + Tier 2 test trigger + real commit SHAs",
         "M4": "not started",
         "M5": "not started",
         "M6": "not started"
