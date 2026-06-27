@@ -3,5 +3,6 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": { "dev": "bun src/index.ts" },
-  "dependencies": { "@orchestrator/contracts": "workspace:*" }
+  "dependencies": {
+    "@orchestrator/bus-client": "workspace:*", "@orchestrator/contracts": "workspace:*" }
 }

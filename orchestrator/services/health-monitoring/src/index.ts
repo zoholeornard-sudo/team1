@@ -120,9 +120,7 @@ async function getStalled(req: Request): Promise<Response> {
   return Response.json({ stalled, count: stalled.length, thresholdMs: STALL_THRESHOLD_MS });
 }
 
-// Start bus in background
-startBus().catch(console.error);
-
+// Start HTTP server first so /health responds before the blocking subscribe loop starts.
 Bun.serve({
   port: PORT,
   async fetch(req) {
@@ -158,3 +156,6 @@ Bun.serve({
 });
 
 console.log(`[${SERVICE_NAME}] listening on :${PORT}`);
+
+// Start bus subscriptions after the HTTP server is listening.
+startBus().catch(console.error);

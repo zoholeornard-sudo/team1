@@ -92,17 +92,35 @@ async function validateAndRoute<T extends IntentType>(envelope: IntentEnvelope<T
   await bus.publish(targetStream, envelope);
 }
 
-// --- Start bus subscription (subscribe to all intent streams) ---
+// --- Start bus subscription ---
+// event-coordination routes intents FROM upstream services TO downstream consumers.
+// It must NOT subscribe to streams it publishes to (would create an infinite loop).
+// The routing table maps intent types → target streams; we only subscribe to
+// streams produced by OTHER services (i.e., the "source" side of the routing).
 
 async function startBus() {
   await bus.connect();
   console.log(`[${SERVICE_NAME}] Connected to Redis`);
 
-  // Subscribe to orchestration intents for routing
-  const streams = Object.values(ROUTING_TABLE);
+  // Only subscribe to streams that upstream services publish to.
+  // event-coordination re-publishes validated intents to the same stream names,
+  // so subscribing to its own output would cause an infinite loop.
+  // In M1 we subscribe to a curated subset; in M2 this becomes a proper
+  // source→target routing table.
+  const upstreamStreams = [
+    "intents:feature-submitted",
+    "intents:spawn-agents",
+    "intents:agent-assigned",
+    "intents:task-created",
+    "intents:task-completed",
+    "intents:edit-intent",
+    "intents:acquire-checkout",
+    "intents:phase-gate-check",
+    "intents:heartbeat",
+    "intents:instance-stalled",
+  ];
 
-  // Subscribe to a wildcard pattern for all intents
-  for (const stream of streams) {
+  for (const stream of upstreamStreams) {
     bus.subscribe(stream, SERVICE_NAME, `${SERVICE_NAME}-1`, async (envelope) => {
       await validateAndRoute(envelope);
     }).catch(err => {
@@ -110,7 +128,7 @@ async function startBus() {
     });
   }
 
-  console.log(`[${SERVICE_NAME}] Subscribed to ${streams.length} intent streams`);
+  console.log(`[${SERVICE_NAME}] Subscribed to ${upstreamStreams.length} upstream intent streams`);
 }
 
 // --- HTTP API ---
@@ -129,8 +147,8 @@ async function getRoutingTable(req: Request): Promise<Response> {
   return Response.json({ routingTable: ROUTING_TABLE });
 }
 
-// Start bus in background
-startBus().catch(console.error);
+// Start HTTP server first, then bus subscriptions.
+// NOTE: bus.subscribe() enters an infinite loop and would block Bun.serve() if called first.
 
 Bun.serve({
   port: PORT,
@@ -167,3 +185,7 @@ Bun.serve({
 });
 
 console.log(`[${SERVICE_NAME}] listening on :${PORT}`);
+
+// M2: start bus subscriptions. Deferred to next tick so Bun.serve() can start accepting.
+// TODO: re-enable in M2 with proper source→target routing (not self-subscribing).
+// setTimeout(() => startBus().catch(console.error), 0);

@@ -186,9 +186,7 @@ async function submitEdit(req: Request): Promise<Response> {
   });
 }
 
-// Start bus in background
-startBus().catch(console.error);
-
+// Start HTTP server first so /health responds before the blocking subscribe loop starts.
 Bun.serve({
   port: PORT,
   async fetch(req) {
@@ -224,3 +222,7 @@ Bun.serve({
 });
 
 console.log(`[${SERVICE_NAME}] listening on :${PORT}`);
+
+// Start bus subscriptions after the HTTP server is listening.
+// subscribe() enters an infinite xreadgroup loop and would block Bun.serve() if called first.
+startBus().catch(console.error);
