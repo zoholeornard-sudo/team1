@@ -26,6 +26,21 @@ upgrade path to Postgres (ADR-0005) or Kafka (ADR-0002 upgrade) is legible.
 | `intents:merge-conflict-detected` | MergeConflictDetected | edit-coordinator | runtime (milestone 5) |
 | `intents:dead-letter` | DeadLetter | any service | (manual triage) |
 
+## Refinement plan streams (v1.2.0)
+
+| Prefix | Purpose | Producer | Consumer(s) |
+|--------|---------|----------|-------------|
+| `intents:workflow-created` | WorkflowCreated | orchestrator-api | workflow |
+| `intents:workflow-task-state-changed` | WorkflowTaskStateChanged | workflow | task-management, lifecycle-management |
+| `intents:manager-heartbeat` | ManagerHeartbeat | manager-loop | event-coordination |
+| `intents:reassign-task` | ReassignTask | manager-loop | task-management |
+| `intents:scope-change-request` | ScopeChangeRequest | manager-loop, metric-alert | lifecycle-management |
+| `intents:review-requested` | ReviewRequested | review-scheduler | lifecycle-management |
+| `intents:review-report` | ReviewReport | lifecycle-management | event-coordination |
+| `intents:conflict-detected` | ConflictDetected | conflict-detector | event-coordination |
+| `intents:backup-agent-spawned` | BackupAgentSpawned | conflict-detector | agent-registry |
+| `intents:metric-alert` | MetricAlert | metric-alert | event-coordination, lifecycle-management |
+
 ## Per-service state (SQLite, not Redis)
 
 | Service | DB file | Tables |
@@ -38,6 +53,11 @@ upgrade path to Postgres (ADR-0005) or Kafka (ADR-0002 upgrade) is legible.
 | edit-coordinator | `data/work.db` | commits, lock_log |
 | agent-registry | `data/registry.db` | personas, instances, manager_capabilities |
 | runtime | `data/runtime.db` | in_flight_turns, agent_state |
+| workflow | `data/workflow.db` | workflows, workflow_tasks |
+| manager-loop | `data/manager.db` | agent_states, manager_states |
+| review-scheduler | `data/review.db` | review_reports |
+| conflict-detector | `data/conflict.db` | proposals, conflicts |
+| metric-alert | `data/metric.db` | tracked_metrics, alert_history |
 
 ## Idempotency dedupe
 
