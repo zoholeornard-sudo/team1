@@ -75,9 +75,13 @@ async function gitCheckout(branch: string): Promise<boolean> {
       stderr: "pipe",
     });
     const exitCode = await proc.exited;
+    if (exitCode !== 0) {
+      const stderr = await new Response(proc.stderr).text();
+      console.error(`[${SERVICE_NAME}] git checkout failed: ${stderr}`);
+    }
     return exitCode === 0;
   } catch (err) {
-    console.error(`[${SERVICE_NAME}] git checkout failed:`, err);
+    console.error(`[${SERVICE_NAME}] git checkout error:`, err);
     return false;
   }
 }
@@ -103,16 +107,21 @@ async function gitCommit(message: string): Promise<string | null> {
       stderr: "pipe",
     });
     const exitCode = await proc.exited;
-    if (exitCode !== 0) return null;
+    if (exitCode !== 0) {
+      const stderr = await new Response(proc.stderr).text();
+      console.error(`[${SERVICE_NAME}] git commit failed: ${stderr}`);
+      return null;
+    }
 
     // Get commit SHA
-    const shaProc = Bun.spawn(["git", "revparse", ["HEAD"]], {
+    const shaProc = Bun.spawn(["git", "rev-parse", "HEAD"], {
       cwd: REPO_ROOT,
       stdout: "pipe",
     });
     const text = await new Response(shaProc.stdout).text();
     return text.trim();
-  } catch {
+  } catch (err) {
+    console.error(`[${SERVICE_NAME}] git commit error:`, err);
     return null;
   }
 }
@@ -139,7 +148,7 @@ async function gitRevert(commitSha: string): Promise<string | null> {
     });
     if ((await proc.exited) !== 0) return null;
 
-    const shaProc = Bun.spawn(["git", "revparse", ["HEAD"]], {
+    const shaProc = Bun.spawn(["git", "rev-parse", "HEAD"], {
       cwd: REPO_ROOT,
       stdout: "pipe",
     });
@@ -372,9 +381,7 @@ async function getMetrics(req: Request): Promise<Response> {
   });
 }
 
-// Start bus in background
-startBus().catch(console.error);
-
+// Start HTTP server first so /health responds before the blocking subscribe loop starts.
 Bun.serve({
   port: PORT,
   async fetch(req) {
@@ -418,3 +425,6 @@ Bun.serve({
 });
 
 console.log(`[${SERVICE_NAME}] listening on :${PORT}`);
+
+// Start bus subscriptions after the HTTP server is listening.
+startBus().catch(console.error);

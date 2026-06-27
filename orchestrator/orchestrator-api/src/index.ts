@@ -140,6 +140,30 @@ async function spawnAgents(req: Request): Promise<Response> {
     feature.instances.push(instance);
     spawned.push(instance);
 
+    // Create git branch and progress log file
+    try {
+      const proc = Bun.spawn(["git", "checkout", "-b", branch], {
+        cwd: REPO_ROOT,
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      await proc.exited;
+
+      // Write initial progress log
+      const progressContent = `# Progress Log: ${instanceId}\n\nFeature: ${featureSlug}\nBranch: ${branch}\nStatus: launching\nCreated: ${new Date().toISOString()}\n`;
+      await Bun.write(`${REPO_ROOT}/${progressPath}`, progressContent);
+
+      // Commit and push
+      const addProc = Bun.spawn(["git", "add", progressPath], { cwd: REPO_ROOT });
+      await addProc.exited;
+      const commitProc = Bun.spawn(["git", "commit", "-m", `chore(orchestrator): initialize progress log for ${instanceId}`], { cwd: REPO_ROOT });
+      await commitProc.exited;
+      const pushProc = Bun.spawn(["git", "push", "origin", branch], { cwd: REPO_ROOT });
+      await pushProc.exited;
+    } catch (err) {
+      console.error(`[${SERVICE_NAME}] Git setup failed for ${instanceId}:`, err);
+    }
+
     // Emit SpawnAgents intent
     const spawnPayload: SpawnAgentsPayload = {
       featureSlug,
