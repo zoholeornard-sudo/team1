@@ -15,6 +15,7 @@ import type {
   TaskCreatedPayload,
   TaskCompletedPayload,
   HeartbeatPayload,
+  ReapInstancePayload,
 } from "@orchestrator/contracts";
 
 const PORT = Number(process.env.PORT) || 3100;
@@ -144,6 +145,52 @@ async function completeTask(taskId: string, instanceId: string) {
   console.log(`[${SERVICE_NAME}] TaskCompleted: ${taskId} by ${instanceId}`);
 }
 
+// --- M6: Reap & History ---
+
+interface ReapRecord {
+  instanceId: string;
+  featureSlug: string;
+  branch: string;
+  reason: string;
+  reapedAt: string;
+  finalTurnCount: number;
+}
+
+const reapHistory: ReapRecord[] = [];
+
+async function handleReapInstance(payload: ReapInstancePayload) {
+  console.log(`[${SERVICE_NAME}] ReapInstance: ${payload.instanceId} (reason: ${payload.reason})`);
+
+  const agent = agentStates.get(payload.instanceId);
+  if (!agent) return;
+
+  // Record reap history
+  reapHistory.push({
+    instanceId: payload.instanceId,
+    featureSlug: agent.featureSlug,
+    branch: agent.branch,
+    reason: payload.reason,
+    reapedAt: new Date().toISOString(),
+    finalTurnCount: agent.activeTurns,
+  });
+
+  // Remove agent state
+  agentStates.delete(payload.instanceId);
+
+  // Emit ReapInstance intent for other services
+  await bus.publish("intents:reap-instance", {
+    type: "ReapInstance",
+    idempotencyKey: `reap-${payload.instanceId}-${Date.now()}`,
+    featureSlug: agent.featureSlug,
+    instanceId: payload.instanceId,
+    branch: agent.branch,
+    timestamp: new Date().toISOString(),
+    payload,
+  });
+
+  console.log(`[${SERVICE_NAME}] Instance ${payload.instanceId} reaped. Total reaped: ${reapHistory.length}`);
+}
+
 // --- Heartbeat loop ---
 
 async function emitHeartbeats() {
@@ -188,6 +235,9 @@ async function startBus() {
     bus.subscribe("intents:task-created", SERVICE_NAME, `${SERVICE_NAME}-2`, async (envelope) => {
       await handleTaskCreated(envelope.payload as TaskCreatedPayload);
     }),
+    bus.subscribe("intents:reap-instance", SERVICE_NAME, `${SERVICE_NAME}-3`, async (envelope) => {
+      await handleReapInstance(envelope.payload as ReapInstancePayload);
+    }),
   ]);
 }
 
@@ -208,6 +258,33 @@ async function getTurns(req: Request): Promise<Response> {
   return Response.json({ turns, count: turns.length });
 }
 
+async function getReapHistory(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const featureSlug = url.searchParams.get("featureSlug");
+
+  let history = reapHistory;
+  if (featureSlug) history = history.filter(r => r.featureSlug === featureSlug);
+
+  return Response.json({ reapHistory: history, count: history.length });
+}
+
+async function reapInstance(req: Request): Promise<Response> {
+  const body = await req.json() as { instanceId: string; reason: string };
+
+  const agent = agentStates.get(body.instanceId);
+  if (!agent) {
+    return new Response("Instance not found", { status: 404 });
+  }
+
+  await handleReapInstance({
+    instanceId: body.instanceId,
+    reason: body.reason as any,
+    finalProgressCommitted: true,
+  });
+
+  return Response.json({ success: true, instanceId: body.instanceId, status: "reaped" });
+}
+
 // Start HTTP server first so /health responds before the blocking subscribe loop starts.
 Bun.serve({
   port: PORT,
@@ -224,6 +301,7 @@ Bun.serve({
           model: "polling-agent",
           agentsTracked: agentStates.size,
           inFlightTurns: inFlightTurns.size,
+          reapedInstances: reapHistory.length,
           redis: redisOk ? "connected" : "disconnected",
         });
       }
@@ -234,6 +312,14 @@ Bun.serve({
 
       if (url.pathname === "/turns" && req.method === "GET") {
         return getTurns(req);
+      }
+
+      if (url.pathname === "/reap" && req.method === "POST") {
+        return reapInstance(req);
+      }
+
+      if (url.pathname === "/reap/history" && req.method === "GET") {
+        return getReapHistory(req);
       }
 
       return new Response("Not found", { status: 404 });
