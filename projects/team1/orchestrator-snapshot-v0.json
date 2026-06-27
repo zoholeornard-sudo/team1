@@ -1,21 +1,61 @@
 [
   {
-    "snapshotVersion": "v0",
-    "timestamp": "2026-06-26T23:49:22Z",
+    "snapshotVersion": "v1",
+    "timestamp": "2026-06-27T01:10:00Z",
     "orchestrator": {
       "services": [
-        {"name": "edit-coordinator", "path": "/workspaces/team1/orchestrator/services/edit-coordinator/"},
-        {"name": "event-coordination", "path": "/workspaces/team1/orchestrator/services/event-coordination/"},
+        {"name": "orchestrator-api", "path": "/workspaces/team1/orchestrator/orchestrator-api/"},
+        {"name": "runtime", "path": "/workspaces/team1/orchestrator/runtime/"},
+        {"name": "agent-registry", "path": "/workspaces/team1/orchestrator/agent-registry/"},
+        {"name": "task-management", "path": "/workspaces/team1/orchestrator/services/task-management/"},
+        {"name": "session-management", "path": "/workspaces/team1/orchestrator/services/session-management/"},
         {"name": "health-monitoring", "path": "/workspaces/team1/orchestrator/services/health-monitoring/"},
         {"name": "lifecycle-management", "path": "/workspaces/team1/orchestrator/services/lifecycle-management/"},
+        {"name": "event-coordination", "path": "/workspaces/team1/orchestrator/services/event-coordination/"},
+        {"name": "edit-coordinator", "path": "/workspaces/team1/orchestrator/services/edit-coordinator/"},
+        {"name": "workflow", "path": "/workspaces/team1/orchestrator/services/workflow/"},
         {"name": "manager-loop", "path": "/workspaces/team1/orchestrator/services/manager-loop/"},
         {"name": "review-scheduler", "path": "/workspaces/team1/orchestrator/services/review-scheduler/"},
-        {"name": "session-management", "path": "/workspaces/team1/orchestrator/services/session-management/"},
-        {"name": "task-management", "path": "/workspaces/team1/orchestrator/services/task-management/"},
-        {"name": "workflow", "path": "/workspaces/team1/orchestrator/services/workflow/"}
+        {"name": "conflict-detector", "path": "/workspaces/team1/orchestrator/services/conflict-detector/"},
+        {"name": "metric-alert", "path": "/workspaces/team1/orchestrator/services/metric-alert/"}
+      ],
+      "packages": [
+        {"name": "@orchestrator/contracts", "path": "/workspaces/team1/orchestrator/packages/contracts/"},
+        {"name": "@orchestrator/bus-client", "path": "/workspaces/team1/orchestrator/packages/bus-client/"}
       ],
       "intentTypes": [
-
+        "FeatureSubmitted",
+        "SpawnAgents",
+        "AgentAssigned",
+        "SessionStarted",
+        "ReapInstance",
+        "TaskCreated",
+        "TaskCompleted",
+        "EditIntent",
+        "AcquireCheckout",
+        "EditApplied",
+        "CheckoutDenied",
+        "PhaseGateCheck",
+        "PhaseGatePassed",
+        "PhaseGateFailed",
+        "Heartbeat",
+        "InstanceStalled",
+        "MergeConflictDetected",
+        "TestNeeded",
+        "TestFailed",
+        "EditReverted",
+        "PhaseEscalation",
+        "DeadLetter",
+        "WorkflowCreated",
+        "WorkflowTaskStateChanged",
+        "ManagerHeartbeat",
+        "ReassignTask",
+        "ScopeChangeRequest",
+        "ReviewRequested",
+        "ReviewReport",
+        "ConflictDetected",
+        "BackupAgentSpawned",
+        "MetricAlert"
       ],
       "adrs": [
         {"file": "docs/adr/0001-bounded-contexts-as-processes.md"},
@@ -28,23 +68,42 @@
         "idem:",
         "intents:acquire-checkout",
         "intents:agent-assigned",
+        "intents:backup-agent-spawned",
         "intents:checkout-denied",
+        "intents:conflict-detected",
         "intents:dead-letter",
         "intents:edit-applied",
         "intents:edit-intent",
         "intents:feature-submitted",
         "intents:heartbeat",
         "intents:instance-stalled",
+        "intents:manager-heartbeat",
         "intents:merge-conflict-detected",
+        "intents:metric-alert",
         "intents:phase-gate-check",
         "intents:phase-gate-failed",
         "intents:phase-gate-passed",
         "intents:reap-instance",
+        "intents:reassign-task",
+        "intents:review-report",
+        "intents:review-requested",
+        "intents:scope-change-request",
         "intents:session-started",
         "intents:spawn-agents",
         "intents:task-completed",
-        "intents:task-created"
-      ]
+        "intents:task-created",
+        "intents:workflow-created",
+        "intents:workflow-task-state-changed"
+      ],
+      "milestones": {
+        "M0": "complete",
+        "M1": "complete — bus boot + all 14 services healthy",
+        "M2": "complete — Spawn & Assign flow verified end-to-end",
+        "M3": "not started",
+        "M4": "not started",
+        "M5": "not started",
+        "M6": "not started"
+      }
     }
   }
 ]
