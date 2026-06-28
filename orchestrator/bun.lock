@@ -40,6 +40,17 @@
       "name": "@orchestrator/contracts",
       "version": "0.1.0",
     },
+    "packages/integration-tests": {
+      "name": "@orchestrator/integration-tests",
+      "version": "0.1.0",
+      "dependencies": {
+        "@orchestrator/bus-client": "workspace:*",
+        "@orchestrator/contracts": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+    },
     "runtime": {
       "name": "@orchestrator/runtime",
       "version": "0.1.0",
@@ -174,6 +185,8 @@
     "@orchestrator/event-coordination": ["@orchestrator/event-coordination@workspace:services/event-coordination"],
 
     "@orchestrator/health-monitoring": ["@orchestrator/health-monitoring@workspace:services/health-monitoring"],
+
+    "@orchestrator/integration-tests": ["@orchestrator/integration-tests@workspace:packages/integration-tests"],
 
     "@orchestrator/lifecycle-management": ["@orchestrator/lifecycle-management@workspace:services/lifecycle-management"],
 

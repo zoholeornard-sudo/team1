@@ -1,0 +1,16 @@
+{
+  "name": "@orchestrator/integration-tests",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/integration.test.ts",
+  "scripts": {
+    "test": "bun test src/integration.test.ts"
+  },
+  "dependencies": {
+    "@orchestrator/bus-client": "workspace:*",
+    "@orchestrator/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

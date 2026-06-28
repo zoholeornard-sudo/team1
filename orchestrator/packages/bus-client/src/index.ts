@@ -18,6 +18,7 @@ export interface BusConfig {
   url?: string;
   dedupTtl?: number;
   maxRetries?: number;
+  redisDb?: number; // Redis SELECT db (0-15) for multi-instance isolation
 }
 
 export class BusClient {
@@ -29,13 +30,24 @@ export class BusClient {
       url: config.url || REDIS_URL,
       dedupTtl: config.dedupTtl || DEDUP_TTL,
       maxRetries: config.maxRetries || MAX_RETRIES,
+      redisDb: config.redisDb ?? this.extractDbFromUrl(config.url || REDIS_URL),
     };
     this.redis = createClient({ url: this.config.url });
+  }
+
+  private extractDbFromUrl(url: string): number {
+    // redis://localhost:6379/3 → db=3
+    const match = url.match(/\/(\d+)$/);
+    return match ? parseInt(match[1]) : 0;
   }
 
   async connect(): Promise<void> {
     if (!this.redis.isOpen) {
       await this.redis.connect();
+    }
+    // SELECT the instance-specific DB
+    if (this.config.redisDb > 0) {
+      await this.redis.select(this.config.redisDb);
     }
   }
 

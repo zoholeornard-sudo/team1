@@ -35,19 +35,59 @@ interface MetricState {
 }
 
 // MBO metric definitions (loaded from metrics/mbo-targets.yaml in production)
+// Aligned with canonical targets — see /workspaces/team1/metrics/mbo-targets.yaml
 const mboMetrics: Map<string, Array<{ name: string; target: string; unit: string }>> = new Map([
   ["SaaS Development Unit", [
     { name: "uptime", target: "99.9", unit: "percent" },
     { name: "api_response", target: "200", unit: "ms" },
+    { name: "delivery_velocity", target: "100", unit: "percent" },
     { name: "bug_escape_rate", target: "5", unit: "percent" },
+    { name: "feature_adoption", target: "60", unit: "percent" },
+    { name: "test_coverage", target: "80", unit: "percent" },
+    { name: "mttr", target: "15", unit: "minutes" },
+    { name: "deployment_success_rate", target: "99", unit: "percent" },
+  ]],
+  ["Mobile Development Unit", [
+    { name: "ci_cycle_time", target: "120", unit: "minutes" },
+    { name: "cold_launch", target: "1000", unit: "ms" },
+    { name: "app_store_rating", target: "4.5", unit: "stars" },
+    { name: "crash_free_rate", target: "99.5", unit: "percent" },
+  ]],
+  ["Web Development Unit", [
+    { name: "ttfb", target: "1000", unit: "ms" },
+    { name: "lighthouse_score", target: "90", unit: "score" },
+    { name: "seo_score", target: "90", unit: "score" },
+  ]],
+  ["Desktop Development Unit", [
+    { name: "installer_success", target: "100", unit: "percent" },
+    { name: "crash_mttr", target: "5", unit: "minutes" },
+    { name: "auto_update_success", target: "99", unit: "percent" },
   ]],
   ["Cloud Infrastructure Unit", [
     { name: "cost_utilization", target: "95", unit: "percent" },
     { name: "provisioning_time", target: "30", unit: "seconds" },
+    { name: "iac_coverage", target: "100", unit: "percent" },
+    { name: "drift_detection_coverage", target: "100", unit: "percent" },
+  ]],
+  ["ML/Ops Unit", [
+    { name: "drift_false_positives", target: "0.5", unit: "percent" },
+    { name: "deployment_time", target: "15", unit: "minutes" },
+    { name: "model_freshness", target: "60", unit: "minutes" },
+  ]],
+  ["AI Research Unit", [
+    { name: "prototypes", target: "4", unit: "per_quarter" },
+    { name: "publications", target: "2", unit: "per_year" },
+    { name: "papers_reviewed", target: "50", unit: "per_quarter" },
+  ]],
+  ["Data Science Unit", [
+    { name: "actionable_insights", target: "5", unit: "per_month" },
+    { name: "ab_test_lift", target: "10", unit: "percent" },
+    { name: "pipeline_reliability", target: "99", unit: "percent" },
   ]],
   ["Security & Compliance Unit", [
     { name: "critical_vulns", target: "0", unit: "count" },
     { name: "ir_response_time", target: "60", unit: "minutes" },
+    { name: "alert_latency", target: "5", unit: "minutes" },
   ]],
 ]);
 

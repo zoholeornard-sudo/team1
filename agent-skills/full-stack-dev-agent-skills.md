@@ -135,7 +135,7 @@
 | Metric | Target | Measurement Method |
 |--------|--------|-------------------|
 | Code Coverage | >80% | Jest, pytest-cov |
-| API Response Time | _see assignment_ | Load testing, APM |
+| API Response Time | sub-200ms p95 | Load testing, APM |
 | Bug Escape Rate | <5% to production | Bug tracking |
 | PR Review Turnaround | <24 hours | GitHub/GitLab metrics |
 

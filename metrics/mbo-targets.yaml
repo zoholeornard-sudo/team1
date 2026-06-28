@@ -5,8 +5,9 @@ units:
       - name: "Uptime"
         target: "99.9%"
         measurement: "Platform monitoring"
+        notes: "Business objective; Architect designs to 99.99% design target for buffer"
       - name: "API Response"
-        target: "sub-200ms under load"
+        target: "sub-200ms p95 under load"
         measurement: "Performance metrics"
       - name: "Delivery Velocity"
         target: "On-time feature delivery"
@@ -14,6 +15,18 @@ units:
       - name: "Quality"
         target: "<5% bug escape rate"
         measurement: "Production incidents"
+      - name: "Feature Adoption"
+        target: ">60% of target users"
+        measurement: "Product analytics"
+      - name: "Test Coverage"
+        target: ">80% code, 100% critical paths"
+        measurement: "Coverage tools"
+      - name: "MTTR"
+        target: "<15 minutes"
+        measurement: "Incident tracking"
+      - name: "Deployment Success Rate"
+        target: ">99%"
+        measurement: "Deployment logs"
   "Mobile Development Unit":
     mboObjective: "Deliver new mobile features within 2-hour CI cycle; <1s cold app launch; 4.5+ App Store rating"
     metrics:
@@ -29,6 +42,9 @@ units:
       - name: "Release Velocity"
         target: "Weekly releases"
         measurement: "Release cadence"
+      - name: "Crash-Free Rate"
+        target: ">99.5%"
+        measurement: "Crashlytics"
   "Web Development Unit":
     mboObjective: "<1s TTFB at 100k concurrent users; WCAG 2.1 AA compliance; SEO score >90"
     metrics:
@@ -41,6 +57,9 @@ units:
       - name: "SEO Score"
         target: ">90"
         measurement: "Lighthouse / third-party audit"
+      - name: "Lighthouse Score"
+        target: ">90 across all categories"
+        measurement: "Lighthouse CI"
   "Desktop Development Unit":
     mboObjective: "Zero installer failures; MTTR for critical crashes <5 minutes"
     metrics:
@@ -50,6 +69,9 @@ units:
       - name: "Crash MTTR"
         target: "<5 minutes for critical crashes"
         measurement: "Incident response logs"
+      - name: "Auto-Update Success"
+        target: ">99%"
+        measurement: "Update analytics"
   "Cloud Infrastructure Unit":
     mboObjective: "95% cost utilization efficiency; <30s average resource provisioning"
     metrics:
@@ -59,6 +81,12 @@ units:
       - name: "Provisioning Time"
         target: "<30s average"
         measurement: "IaC pipeline metrics"
+      - name: "IaC Coverage"
+        target: "100% resources"
+        measurement: "IaC audit"
+      - name: "Drift Detection Coverage"
+        target: "100% IaC-managed resources"
+        measurement: "Drift detection logs"
   "ML/Ops Unit":
     mboObjective: "<0.5% false positives in drift detection; model deployment <15 minutes"
     metrics:
@@ -68,6 +96,9 @@ units:
       - name: "Deployment Time"
         target: "<15 minutes"
         measurement: "ML deployment pipeline"
+      - name: "Model Freshness"
+        target: "<1 hour lag"
+        measurement: "Data freshness metrics"
   "AI Research Unit":
     mboObjective: "4 prototypes per quarter; 2 peer-reviewed publications per year"
     metrics:
@@ -77,6 +108,9 @@ units:
       - name: "Publications"
         target: "2 per year"
         measurement: "Publication tracking"
+      - name: "Papers Reviewed"
+        target: "50/quarter"
+        measurement: "Literature database"
   "Data Science Unit":
     mboObjective: "5 actionable insights per month; A/B test lift >10%"
     metrics:
@@ -86,6 +120,9 @@ units:
       - name: "A/B Test Lift"
         target: ">10%"
         measurement: "Experiment results"
+      - name: "Pipeline Reliability"
+        target: ">99% successful runs"
+        measurement: "Pipeline monitoring"
   "Security & Compliance Unit":
     mboObjective: "Zero critical vulnerabilities; <1-hour incident response time"
     metrics:
@@ -95,3 +132,6 @@ units:
       - name: "Incident Response"
         target: "<1 hour"
         measurement: "IR timeline tracking"
+      - name: "Alert Latency"
+        target: "<5 minutes"
+        measurement: "Alert tracking"

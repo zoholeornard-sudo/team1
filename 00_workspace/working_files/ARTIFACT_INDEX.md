@@ -19,6 +19,9 @@ Unit-level artifacts live in their respective directories. This index tracks wha
 | 2026-06-05 | AI Research Unit — reqs analysis & bootstrap | @research-innovation-manager | Complete | `../ai-research/ANALYSIS.md`, `../ai-research/TASKS.md` |
 | 2026-06-05 | Data Science Unit — reqs analysis & bootstrap | @data-science-manager | Complete | `../data-science/ANALYSIS.md`, `../data-science/TASKS.md` |
 | 2026-06-05 | Security & Compliance Unit — reqs analysis & bootstrap | @security-compliance-manager | Complete | `../security-compliance/ANALYSIS.md`, `../security-compliance/TASKS.md` |
+| 2026-06-27 | MBO Targets ↔ Agent Skills Alignment Audit | @architect-agent | Complete | `metrics/mbo-targets.yaml` (15 metrics added), `agent-skills/full-stack-dev-agent-skills.md` (API target fixed) |
+| 2026-06-27 | Feature Rollout Playbook — Intent Binding | @product-manager-agent | Complete | `playbooks/product-management/feature-rollout.md` (intent events, feature flag framework, MBO-derived thresholds) |
+| 2026-06-27 | Deployment Checklist — Threshold Alignment | @devops-agent | Complete | `playbooks/operations/deployment-checklist.md` (removed hardcoded thresholds, references rollout playbook) |
 
 ## Per-Unit Artifacts
 

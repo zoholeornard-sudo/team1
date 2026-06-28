@@ -129,12 +129,15 @@
 
 ## Quality Targets
 
-| Metric | Target | Measurement Method |
-|--------|--------|-------------------|
-| Accessibility Score | _see assignment_ | Accessibility audit tools |
-| Design System Coverage | >90% of components | Component inventory |
-| Usability Score | >80% task completion | User testing |
-| Handoff Clarity | <5 implementation questions per feature | Developer feedback |
+> Canonical MBO targets: see [`metrics/mbo-targets.yaml`](../../metrics/mbo-targets.yaml)
+
+| Metric | Target | MBO Source | Measurement Method |
+|--------|--------|------------|-------------------|
+| Accessibility Score | WCAG 2.1 AA | Web Unit: WCAG 2.1 AA | Accessibility audit tools |
+| Design System Coverage | >90% of components | — | Component inventory |
+| Usability Score | >80% task completion | — | User testing |
+| Handoff Clarity | <5 implementation questions per feature | — | Developer feedback |
+| Feature Adoption | >60% of target users | SaaS: Feature Adoption | Product analytics |
 
 ---
 

@@ -14,6 +14,7 @@
     "dev": "bun --filter '*' dev",
     "build": "bun --filter '*' build",
     "test": "bun --filter '*' test",
+    "test:integration": "bun test packages/integration-tests/src/integration.test.ts",
     "boot:bus": "docker compose -f infra/docker-compose.yml up -d redis",
     "boot:services": "bun --filter './services/*' dev",
     "lint": "bun --filter '*' lint"

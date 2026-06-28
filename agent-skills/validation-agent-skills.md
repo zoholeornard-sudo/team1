@@ -48,11 +48,14 @@
 
 ## Quality Targets
 
-| Metric | Target |
-|--------|--------|
-| False Positive Rate | <0.5% drift detection |
-| Deployment Readiness | 100% validation pass |
-| Bias Thresholds | Meets fairness criteria |
+> Canonical MBO targets: see [`metrics/mbo-targets.yaml`](../../metrics/mbo-targets.yaml)
+
+| Metric | Target | Measurement Method |
+|--------|--------|-------------------|
+| Deployment Readiness | 100% validation pass | Validation gate completion |
+| Bias Thresholds | Meets fairness criteria | Fairlearn/AIF360 audit |
+| Model Performance Degradation | <0.5% vs baseline | Benchmark comparison |
+| Validation Coverage | 100% of models validated | Validation pipeline logs |
 
 ---
 

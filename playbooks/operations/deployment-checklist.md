@@ -2,7 +2,12 @@
 
 > **Phase:** 5 — Deployment & Release
 > **Owner:** DevOps Agent | **Trigger:** Pre-production deployment
-> **Last Updated:** 2025-06-03
+> **Last Updated:** 2025-06-27
+> **Rollback thresholds:** See [Feature Rollout Playbook](../product-management/feature-rollout.md) Rollback Decision Matrix
+
+---
+
+> **Note:** This checklist covers *code-readiness* gates only. Cross-unit coordination gates (security, analytics, MBO) live in the Feature Rollout Playbook. Execute both checklists in parallel where applicable.
 
 ---
 
@@ -73,35 +78,25 @@
 
 **When to roll back immediately:**
 
-- Error rate > 1% above baseline
-- Latency p99 > 2x baseline
+> Thresholds are MBO-derived. See the [Rollback Decision Matrix](../product-management/feature-rollout.md) in the Feature Rollout Playbook for unit-specific values.
+
+- Error rate > 2x baseline (or unit-specific threshold from `metrics/mbo-targets.yaml`)
+- Latency p95 > 1.5x baseline (SaaS: >300ms)
 - Critical user-facing bug
 - Security incident
 - Data corruption detected
 
 **How to roll back:**
 
-1. Halt traffic to new version via feature flag
-2. Revert to previous stable deployment
+1. Activate kill switch flag (instant traffic halt to new version)
+2. If flag insufficient: revert to previous stable deployment
 3. Verify rollback successful
-4. Post-mortem within 24 hours
-5. Fix forward or keep reverted per decision
-
----
-
-## MBO Targets
-
-> Look up canonical values in `metrics/mbo-targets.yaml`
-
-- **SaaS:** [See Assignment]
-- **Web:** [See Assignment]
-- **Mobile:** <1s cold app launch
-- **Cloud:** [See Assignment], [See Assignment] provisioning
-- **ML:** [See Assignment]
+4. Emit `intents:rollback-triggered` to `workflow` service
+5. Post-mortem scheduled within 24h via `review-scheduler`
 
 ---
 
 ## Related
 
-- Incident Response (`incident-response.md`)
-- Feature Rollout (`../product-management/feature-rollout.md`)
+- [Incident Response](`incident-response.md`) — severity classification and IR workflow
+- [Feature Rollout](../product-management/feature-rollout.md`) — full lifecycle rollback thresholds and intent events
