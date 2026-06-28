@@ -143,9 +143,11 @@ async function listWorkflows(req: Request): Promise<Response> {
 
 async function updateTaskState(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const parts = url.pathname.split("/");
-  const taskId = parts.pop()!;
-  const workflowId = parts.pop()!;
+  // URL: /workflows/:workflowId/tasks/:taskId
+  const match = url.pathname.match(/\/workflows\/([^/]+)\/tasks\/([^/]+)/);
+  if (!match) return new Response("Invalid URL", { status: 400 });
+  const workflowId = match[1];
+  const taskId = match[2];
 
   const body = await req.json() as { state: string; assignedInstance?: string };
   const validStates = ["pending", "ready", "in_progress", "done", "blocked", "needs_review"];
@@ -210,7 +212,7 @@ Bun.serve({
       if (url.pathname === "/workflows" && req.method === "POST") return createWorkflow(req);
       if (url.pathname === "/workflows" && req.method === "GET") return listWorkflows(req);
       if (url.pathname.match(/^\/workflows\/[^/]+$/) && req.method === "GET") return getWorkflow(req);
-      if (url.pathname.match(/^\/workflows\/[^/]+\/tasks\/[^/]+$/) && req.method === "PATCH") return updateTaskState(req);
+      if (url.pathname.includes("/tasks/") && req.method === "PATCH") return updateTaskState(req);
       if (url.pathname === "/tasks" && req.method === "GET") return queryTasks(req);
       return new Response("Not found", { status: 404 });
     } catch (err) {
