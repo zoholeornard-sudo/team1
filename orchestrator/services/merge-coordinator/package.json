@@ -1,0 +1,13 @@
+{
+  "name": "@orchestrator/merge-coordinator",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@orchestrator/bus-client": "workspace:*",
+    "@orchestrator/contracts": "workspace:*"
+  }
+}

@@ -23,7 +23,7 @@ upgrade path to Postgres (ADR-0005) or Kafka (ADR-0002 upgrade) is legible.
 | `intents:phase-gate-failed` | PhaseGateFailed | lifecycle-management | runtime |
 | `intents:heartbeat` | Heartbeat | runtime | health-monitoring |
 | `intents:instance-stalled` | InstanceStalled | health-monitoring | runtime, session-management |
-| `intents:merge-conflict-detected` | MergeConflictDetected | edit-coordinator | runtime (milestone 5) |
+| `intents:merge-conflict-detected` | MergeConflictDetected | merge-coordinator | merge-coordinator, manager-loop |
 | `intents:dead-letter` | DeadLetter | any service | (manual triage) |
 
 ## Refinement plan streams (v1.2.0)
@@ -40,6 +40,14 @@ upgrade path to Postgres (ADR-0005) or Kafka (ADR-0002 upgrade) is legible.
 | `intents:conflict-detected` | ConflictDetected | conflict-detector | event-coordination |
 | `intents:backup-agent-spawned` | BackupAgentSpawned | conflict-detector | agent-registry |
 | `intents:metric-alert` | MetricAlert | metric-alert | event-coordination, lifecycle-management |
+| `intents:merge-ready` | MergeReady | lifecycle-management | merge-coordinator |
+| `intents:merge-queued` | MergeQueued | merge-coordinator | event-coordination |
+| `intents:merge-lock-acquired` | MergeLockAcquired | merge-coordinator | event-coordination |
+| `intents:merge-lock-released` | MergeLockReleased | merge-coordinator | event-coordination |
+| `intents:merge-pending-approval` | MergePendingApproval | merge-coordinator | manager-loop |
+| `intents:merge-approved` | MergeApproved | manager-loop | merge-coordinator |
+| `intents:merge-applied` | MergeApplied | merge-coordinator | event-coordination, workflow |
+| `intents:merge-reverted` | MergeReverted | merge-coordinator | event-coordination, workflow |
 
 ## Per-service state (SQLite, not Redis)
 
@@ -58,6 +66,8 @@ upgrade path to Postgres (ADR-0005) or Kafka (ADR-0002 upgrade) is legible.
 | review-scheduler | `data/review.db` | review_reports |
 | conflict-detector | `data/conflict.db` | proposals, conflicts |
 | metric-alert | `data/metric.db` | tracked_metrics, alert_history |
+| merge-coordinator | `data/merge.db` | merge_queue, merge_lock |
+| feature-flag | `data/flag.db` | feature_flags, flag_history |
 
 ## Idempotency dedupe
 

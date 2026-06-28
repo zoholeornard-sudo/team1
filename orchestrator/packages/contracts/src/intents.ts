@@ -66,7 +66,17 @@ export type IntentType =
   | "MetricWarning"
   | "MetricCritical"
   | "FeatureFlagUpdated"
-  | "WorkflowStepCompleted";
+  | "WorkflowStepCompleted"
+  // Merge-to-main pipeline
+  | "MergeReady"
+  | "MergeQueued"
+  | "MergeLockAcquired"
+  | "MergeLockReleased"
+  | "MergeApproved"
+  | "MergeApplied"
+  | "MergeReverted"
+  | "MergeConflictDetected"
+  | "MergePendingApproval";
 
 export type EditOp = "create" | "update" | "delete" | "progress";
 
@@ -197,14 +207,69 @@ export interface InstanceStalledPayload {
   missedBeats: number; // 3 = stall (90s at 30s interval)
 }
 
-// --- Cross-feature (milestone 5 — stub) ---
+// --- Merge-to-main pipeline (ADR-0005) ---
+
+export interface MergeReadyPayload {
+  featureSlug: string;
+  branch: string;
+  headCommitSha: string;
+  phase7ArtifactId: string;
+  mboSummary: Array<{ name: string; value: string; target: string; onTarget: boolean }>;
+}
+
+export interface MergeQueuedPayload {
+  mergeId: string;
+  featureSlug: string;
+  branch: string;
+  position: number;
+  enqueuedAt: string;
+}
+
+export interface MergeLockAcquiredPayload {
+  mergeId: string;
+  holder: string;
+  acquiredAt: string;
+  expiresAt: string;
+}
+
+export interface MergeLockReleasedPayload {
+  mergeId: string;
+  holder: string;
+  releasedAt: string;
+}
+
+export interface MergeApprovedPayload {
+  mergeId: string;
+  featureSlug: string;
+  approverManagerHandle: string;
+  decision: "approve" | "reject" | "requeue";
+  decidedAt: string;
+}
+
+export interface MergeAppliedPayload {
+  mergeId: string;
+  featureSlug: string;
+  mergeCommitSha: string;
+  mergedBranches: string[];
+  appliedAt: string;
+}
+
+export interface MergeRevertedPayload {
+  mergeId: string;
+  originalMergeSha: string;
+  revertSha: string;
+  reason: string;
+  revertedAt: string;
+}
 
 export interface MergeConflictDetectedPayload {
+  mergeId: string;
   featureSlug: string;
   branch: string;
   conflictingBranch: string;
   files: string[];
-  // Resolution path: milestone 5. No MergeResolutionApplied / RebaseRequested in v1 catalog.
+  resolution: "rebase" | "manual" | "abort";
+  detectedAt: string;
 }
 
 // --- v1.1.0 additions: async test coordination + lifecycle escalation ---
@@ -326,6 +391,74 @@ export interface WorkflowStepCompletedPayload {
   stepNumber: number;
   stepName: string;
   output: string;
+}
+
+// --- Merge-to-main pipeline ---
+
+export interface MergeReadyPayload {
+  featureSlug: string;
+  branch: string;
+  headCommitSha: string;
+  phase7ArtifactId: string;
+  mboSummary: Array<{ name: string; value: string; target: string; onTarget: boolean }>;
+}
+
+export interface MergeQueuedPayload {
+  mergeId: string;
+  featureSlug: string;
+  branch: string;
+  position: number;
+  enqueuedAt: string;
+}
+
+export interface MergeLockAcquiredPayload {
+  mergeId: string;
+  holder: string;
+  acquiredAt: string;
+  expiresAt: string;
+}
+
+export interface MergeLockReleasedPayload {
+  mergeId: string;
+  releasedAt: string;
+}
+
+export interface MergeApprovedPayload {
+  mergeId: string;
+  featureSlug: string;
+  approverManagerHandle: string;
+  decision: "approve" | "reject" | "requeue";
+}
+
+export interface MergeAppliedPayload {
+  mergeId: string;
+  featureSlug: string;
+  mergeCommitSha: string;
+  mergedBranches: string[];
+}
+
+export interface MergeRevertedPayload {
+  mergeId: string;
+  originalMergeSha: string;
+  revertSha: string;
+  reason: string;
+}
+
+export interface MergeConflictDetectedPayload {
+  mergeId: string;
+  featureSlug: string;
+  branch: string;
+  conflictingBranch: string;
+  files: string[];
+  resolution: "rebase" | "manual" | "abort";
+}
+
+export interface MergePendingApprovalPayload {
+  mergeId: string;
+  featureSlug: string;
+  branch: string;
+  approverManagerHandle: string;
+  requestedAt: string;
 }
 
 // --- Bus hygiene ---
@@ -481,3 +614,11 @@ export type MetricWarning = IntentEnvelope<"MetricWarning", MetricWarningPayload
 export type MetricCritical = IntentEnvelope<"MetricCritical", MetricCriticalPayload>;
 export type FeatureFlagUpdated = IntentEnvelope<"FeatureFlagUpdated", FeatureFlagUpdatedPayload>;
 export type WorkflowStepCompleted = IntentEnvelope<"WorkflowStepCompleted", WorkflowStepCompletedPayload>;
+export type MergeReady = IntentEnvelope<"MergeReady", MergeReadyPayload>;
+export type MergeQueued = IntentEnvelope<"MergeQueued", MergeQueuedPayload>;
+export type MergeLockAcquired = IntentEnvelope<"MergeLockAcquired", MergeLockAcquiredPayload>;
+export type MergeLockReleased = IntentEnvelope<"MergeLockReleased", MergeLockReleasedPayload>;
+export type MergeApproved = IntentEnvelope<"MergeApproved", MergeApprovedPayload>;
+export type MergeApplied = IntentEnvelope<"MergeApplied", MergeAppliedPayload>;
+export type MergeReverted = IntentEnvelope<"MergeReverted", MergeRevertedPayload>;
+export type MergePendingApproval = IntentEnvelope<"MergePendingApproval", MergePendingApprovalPayload>;
