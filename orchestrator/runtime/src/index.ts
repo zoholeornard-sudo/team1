@@ -10,6 +10,7 @@
  *      manage in-flight turns, seed context injection.
  */
 import { createBusClient } from "@orchestrator/bus-client";
+import { Database } from "bun:sqlite";
 import type {
   AgentAssignedPayload,
   TaskCreatedPayload,
@@ -26,6 +27,22 @@ const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS) || 30000
 console.log(`[${SERVICE_NAME}] booting on :${PORT} — polling-agent execution model (ADR-0004)`);
 
 const bus = createBusClient({ url: REDIS_URL });
+
+// --- SQLite reap history (R4) ---
+const REAP_DB_PATH = process.env.REAP_DB_PATH || "data/reap_history.db";
+const reapDb = new Database(REAP_DB_PATH, { create: true });
+reapDb.run("PRAGMA journal_mode = WAL");
+reapDb.run(`
+  CREATE TABLE IF NOT EXISTS reap_history (
+    id TEXT PRIMARY KEY,
+    instance_id TEXT NOT NULL,
+    feature_slug TEXT NOT NULL,
+    branch TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    final_turn_count INTEGER DEFAULT 0,
+    reaped_at TEXT NOT NULL
+  )
+`);
 
 // In-flight turn tracking
 interface InFlightTurn {
@@ -145,18 +162,7 @@ async function completeTask(taskId: string, instanceId: string) {
   console.log(`[${SERVICE_NAME}] TaskCompleted: ${taskId} by ${instanceId}`);
 }
 
-// --- M6: Reap & History ---
-
-interface ReapRecord {
-  instanceId: string;
-  featureSlug: string;
-  branch: string;
-  reason: string;
-  reapedAt: string;
-  finalTurnCount: number;
-}
-
-const reapHistory: ReapRecord[] = [];
+// --- R4: Reap & History ---
 
 async function handleReapInstance(payload: ReapInstancePayload) {
   console.log(`[${SERVICE_NAME}] ReapInstance: ${payload.instanceId} (reason: ${payload.reason})`);
@@ -164,15 +170,12 @@ async function handleReapInstance(payload: ReapInstancePayload) {
   const agent = agentStates.get(payload.instanceId);
   if (!agent) return;
 
-  // Record reap history
-  reapHistory.push({
-    instanceId: payload.instanceId,
-    featureSlug: agent.featureSlug,
-    branch: agent.branch,
-    reason: payload.reason,
-    reapedAt: new Date().toISOString(),
-    finalTurnCount: agent.activeTurns,
-  });
+  // Record reap history in SQLite
+  const reapedAt = new Date().toISOString();
+  reapDb.run(
+    "INSERT INTO reap_history (id, instance_id, feature_slug, branch, reason, final_turn_count, reaped_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [`reap-${payload.instanceId}-${Date.now()}`, payload.instanceId, agent.featureSlug, agent.branch, payload.reason, agent.activeTurns, reapedAt]
+  );
 
   // Remove agent state
   agentStates.delete(payload.instanceId);
@@ -184,11 +187,12 @@ async function handleReapInstance(payload: ReapInstancePayload) {
     featureSlug: agent.featureSlug,
     instanceId: payload.instanceId,
     branch: agent.branch,
-    timestamp: new Date().toISOString(),
+    timestamp: reapedAt,
     payload,
   });
 
-  console.log(`[${SERVICE_NAME}] Instance ${payload.instanceId} reaped. Total reaped: ${reapHistory.length}`);
+  const totalReaped = (reapDb.query("SELECT COUNT(*) as cnt FROM reap_history").get() as any)?.cnt || 0;
+  console.log(`[${SERVICE_NAME}] Instance ${payload.instanceId} reaped. Total reaped: ${totalReaped}`);
 }
 
 // --- Heartbeat loop ---
@@ -262,24 +266,39 @@ async function getReapHistory(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const featureSlug = url.searchParams.get("featureSlug");
 
-  let history = reapHistory;
-  if (featureSlug) history = history.filter(r => r.featureSlug === featureSlug);
+  const rows = featureSlug
+    ? reapDb.query("SELECT * FROM reap_history WHERE feature_slug = ? ORDER BY reaped_at DESC").all(featureSlug)
+    : reapDb.query("SELECT * FROM reap_history ORDER BY reaped_at DESC").all();
 
-  return Response.json({ reapHistory: history, count: history.length });
+  return Response.json({ reapHistory: rows, count: rows.length });
 }
 
 async function reapInstance(req: Request): Promise<Response> {
-  const body = await req.json() as { instanceId: string; reason: string };
+  const body = await req.json() as { instanceId: string; reason: string; featureSlug?: string; branch?: string };
 
   const agent = agentStates.get(body.instanceId);
-  if (!agent) {
-    return new Response("Instance not found", { status: 404 });
+
+  // If agent is tracked, remove it; otherwise just record the reap
+  if (agent) {
+    agentStates.delete(body.instanceId);
   }
 
-  await handleReapInstance({
+  // Record reap history in SQLite
+  const reapedAt = new Date().toISOString();
+  reapDb.run(
+    "INSERT INTO reap_history (id, instance_id, feature_slug, branch, reason, final_turn_count, reaped_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [`reap-${body.instanceId}-${Date.now()}`, body.instanceId, body.featureSlug || agent?.featureSlug || "unknown", body.branch || agent?.branch || "unknown", body.reason, agent?.activeTurns || 0, reapedAt]
+  );
+
+  // Emit ReapInstance intent
+  await bus.publish("intents:reap-instance", {
+    type: "ReapInstance",
+    idempotencyKey: `reap-${body.instanceId}-${Date.now()}`,
+    featureSlug: body.featureSlug || agent?.featureSlug || "unknown",
     instanceId: body.instanceId,
-    reason: body.reason as any,
-    finalProgressCommitted: true,
+    branch: body.branch || agent?.branch || "unknown",
+    timestamp: reapedAt,
+    payload: { instanceId: body.instanceId, reason: body.reason as any, finalProgressCommitted: true },
   });
 
   return Response.json({ success: true, instanceId: body.instanceId, status: "reaped" });
@@ -301,7 +320,7 @@ Bun.serve({
           model: "polling-agent",
           agentsTracked: agentStates.size,
           inFlightTurns: inFlightTurns.size,
-          reapedInstances: reapHistory.length,
+          reapedInstances: (reapDb.query("SELECT COUNT(*) as cnt FROM reap_history").get() as any)?.cnt || 0,
           redis: redisOk ? "connected" : "disconnected",
         });
       }
