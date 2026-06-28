@@ -45,6 +45,20 @@ const features: Map<string, FeatureRecord> = new Map();
 // Instance counter per persona
 const instanceCounters: Map<string, number> = new Map();
 
+// --- SQLite for feature dependencies (R3) ---
+import { Database } from "bun:sqlite";
+const DEP_DB_PATH = process.env.DEP_DB_PATH || "data/dependencies.db";
+const depDb = new Database(DEP_DB_PATH, { create: true });
+depDb.run("PRAGMA journal_mode = WAL");
+depDb.run(`
+  CREATE TABLE IF NOT EXISTS feature_dependencies (
+    feature TEXT NOT NULL,
+    depends_on_feature TEXT NOT NULL,
+    declared_at TEXT NOT NULL,
+    PRIMARY KEY (feature, depends_on_feature)
+  )
+`);
+
 function getNextInstanceNumber(personaHandle: string): number {
   const current = instanceCounters.get(personaHandle) || 1;
   instanceCounters.set(personaHandle, current + 1);
@@ -257,6 +271,44 @@ Bun.serve({
       // GET /features/:slug — get feature details
       if (url.pathname.match(/^\/features\/[^/]+$/) && req.method === "GET") {
         return getFeature(req);
+      }
+
+      // POST /features/:slug/dependsOn/:otherSlug — declare dependency (R3)
+      if (url.pathname.match(/^\/features\/[^/]+\/dependsOn\/[^/]+$/) && req.method === "POST") {
+        const parts = url.pathname.split("/");
+        const slug = parts[2];
+        const otherSlug = parts[4];
+        const body = await req.json() as { managerToken?: string };
+        if (!body.managerToken) return Response.json({ error: "Manager token required" }, { status: 403 });
+        const now = new Date().toISOString();
+        depDb.run("INSERT OR REPLACE INTO feature_dependencies (feature, depends_on_feature, declared_at) VALUES (?, ?, ?)", [slug, otherSlug, now]);
+        return Response.json({ success: true, feature: slug, dependsOn: otherSlug }, { status: 201 });
+      }
+
+      // GET /features/:slug/dependencies — list dependencies (R3)
+      if (url.pathname.match(/^\/features\/[^/]+\/dependencies$/) && req.method === "GET") {
+        const slug = url.pathname.split("/")[2];
+        const deps = depDb.query("SELECT depends_on_feature, declared_at FROM feature_dependencies WHERE feature = ?").all(slug);
+        return Response.json({ feature: slug, dependencies: deps, count: deps.length });
+      }
+
+      // GET /features/:slug/can-deploy — check if all deps passed Phase 7 (R3)
+      if (url.pathname.match(/^\/features\/[^/]+\/can-deploy$/) && req.method === "GET") {
+        const slug = url.pathname.split("/")[2];
+        const deps = depDb.query("SELECT depends_on_feature FROM feature_dependencies WHERE feature = ?").all(slug) as any[];
+        // In production: check lifecycle-management for each dep's Phase 7 status
+        // For now: return true if no dependencies
+        const canDeploy = deps.length === 0;
+        return Response.json({ feature: slug, canDeploy, dependencies: deps.length });
+      }
+
+      // DELETE /features/:slug/dependsOn/:otherSlug — remove dependency (R3)
+      if (url.pathname.match(/^\/features\/[^/]+\/dependsOn\/[^/]+$/) && req.method === "DELETE") {
+        const parts = url.pathname.split("/");
+        const slug = parts[2];
+        const otherSlug = parts[4];
+        depDb.run("DELETE FROM feature_dependencies WHERE feature = ? AND depends_on_feature = ?", [slug, otherSlug]);
+        return Response.json({ success: true, feature: slug, removed: otherSlug });
       }
 
       return new Response("Not found", { status: 404 });
