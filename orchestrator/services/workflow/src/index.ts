@@ -54,6 +54,44 @@ conn.run(`
   CREATE INDEX IF NOT EXISTS idx_workflow_tasks_state ON workflow_tasks(state);
 `);
 
+// Sprint planning schema
+conn.run(`
+  CREATE TABLE IF NOT EXISTS sprints (
+    sprint_id TEXT PRIMARY KEY,
+    goal TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'planning', -- planning | active | completed
+    capacity_points INTEGER NOT NULL DEFAULT 30,
+    committed_points INTEGER NOT NULL DEFAULT 0,
+    completed_points INTEGER NOT NULL DEFAULT 0,
+    velocity REAL,
+    started_at TEXT,
+    ended_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+`);
+
+conn.run(`
+  CREATE TABLE IF NOT EXISTS sprint_items (
+    item_id TEXT PRIMARY KEY,
+    sprint_id TEXT NOT NULL REFERENCES sprints(sprint_id),
+    title TEXT NOT NULL,
+    description TEXT,
+    owner TEXT NOT NULL,
+    reviewer TEXT,
+    status TEXT NOT NULL DEFAULT 'todo', -- todo | in_progress | done | blocked
+    points INTEGER NOT NULL DEFAULT 1,
+    mbo_tie TEXT,
+    feature_slug TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+`);
+
+conn.run(`
+  CREATE INDEX IF NOT EXISTS idx_sprint_items_sprint ON sprint_items(sprint_id);
+`);
+
 console.log(`[${SERVICE_NAME}] DuckDB initialized at ${DB_PATH}`);
 
 // Helper: current ISO timestamp
@@ -196,6 +234,140 @@ async function listWorkflows(req: Request): Promise<Response> {
   return Response.json(workflows.map(w => ({ ...w, definition: JSON.parse((w as any).definition) })));
 }
 
+// --- Sprint Planning API ---
+
+async function createSprint(req: Request): Promise<Response> {
+  const body = await req.json() as {
+    goal: string;
+    capacityPoints?: number;
+  };
+
+  const sprintId = `sprint-${Date.now().toString(36)}`;
+  const timestamp = now();
+
+  conn.run(`
+    INSERT INTO sprints (sprint_id, goal, status, capacity_points, created_at, updated_at)
+    VALUES (?, ?, 'planning', ?, ?, ?)
+  `, [sprintId, body.goal, body.capacityPoints || 30, timestamp, timestamp]);
+
+  return Response.json({ sprintId, goal: body.goal, status: "planning" }, { status: 201 });
+}
+
+async function getSprint(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const sprintId = url.pathname.split("/").pop()!;
+
+  const sprint = conn.query("SELECT * FROM sprints WHERE sprint_id = ?", [sprintId]).toArray()[0];
+  if (!sprint) return new Response("Sprint not found", { status: 404 });
+
+  const items = conn.query("SELECT * FROM sprint_items WHERE sprint_id = ? ORDER BY created_at", [sprintId]).toArray();
+
+  return Response.json({
+    ...sprint,
+    items,
+    capacityUsed: items.reduce((sum: number, i: any) => sum + i.points, 0),
+  });
+}
+
+async function listSprints(req: Request): Promise<Response> {
+  const sprints = conn.query("SELECT * FROM sprints ORDER BY created_at DESC").toArray();
+  return Response.json({ sprints, count: sprints.length });
+}
+
+async function addSprintItem(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const sprintId = url.pathname.split("/")[2];
+
+  const body = await req.json() as {
+    title: string;
+    description?: string;
+    owner: string;
+    reviewer?: string;
+    points?: number;
+    mboTie?: string;
+    featureSlug?: string;
+  };
+
+  const itemId = `item-${Date.now().toString(36)}`;
+  const timestamp = now();
+
+  conn.run(`
+    INSERT INTO sprint_items (item_id, sprint_id, title, description, owner, reviewer, status, points, mbo_tie, feature_slug, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'todo', ?, ?, ?, ?, ?)
+  `, [itemId, sprintId, body.title, body.description || "", body.owner, body.reviewer || "", body.points || 1, body.mboTie || "", body.featureSlug || "", timestamp, timestamp]);
+
+  // Update committed points
+  conn.run("UPDATE sprints SET committed_points = committed_points + ?, updated_at = ? WHERE sprint_id = ?", [body.points || 1, timestamp, sprintId]);
+
+  return Response.json({ itemId, sprintId, status: "todo" }, { status: 201 });
+}
+
+async function updateSprintItem(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const parts = url.pathname.split("/");
+  const sprintId = parts[2];
+  const itemId = parts[4];
+
+  const body = await req.json() as { status: string };
+  const validStatuses = ["todo", "in_progress", "done", "blocked"];
+  if (!validStatuses.includes(body.status)) {
+    return new Response("Invalid status", { status: 400 });
+  }
+
+  const timestamp = now();
+  conn.run("UPDATE sprint_items SET status = ?, updated_at = ? WHERE item_id = ? AND sprint_id = ?", [body.status, timestamp, itemId, sprintId]);
+
+  // Update completed points if done
+  if (body.status === "done") {
+    const item = conn.query("SELECT points FROM sprint_items WHERE item_id = ?", [itemId]).toArray()[0] as any;
+    if (item) {
+      conn.run("UPDATE sprints SET completed_points = completed_points + ?, updated_at = ? WHERE sprint_id = ?", [item.points, timestamp, sprintId]);
+    }
+  }
+
+  return Response.json({ success: true, itemId, status: body.status });
+}
+
+async function startSprint(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const sprintId = url.pathname.split("/")[2];
+  const timestamp = now();
+
+  conn.run("UPDATE sprints SET status = 'active', started_at = ?, updated_at = ? WHERE sprint_id = ?", [timestamp, timestamp, sprintId]);
+  return Response.json({ sprintId, status: "active" });
+}
+
+async function completeSprint(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const sprintId = url.pathname.split("/")[2];
+  const timestamp = now();
+
+  // Calculate velocity
+  const sprint = conn.query("SELECT capacity_points, completed_points FROM sprints WHERE sprint_id = ?", [sprintId]).toArray()[0] as any;
+  const velocity = sprint ? (sprint.completed_points / sprint.capacity_points) * 100 : 0;
+
+  conn.run("UPDATE sprints SET status = 'completed', ended_at = ?, velocity = ?, updated_at = ? WHERE sprint_id = ?", [timestamp, velocity, timestamp, sprintId]);
+  return Response.json({ sprintId, status: "completed", velocity: `${velocity.toFixed(1)}%` });
+}
+
+async function getVelocity(req: Request): Promise<Response> {
+  const sprints = conn.query("SELECT sprint_id, velocity, capacity_points, completed_points, status FROM sprints WHERE status = 'completed' ORDER BY ended_at DESC LIMIT 5").toArray();
+  const avgVelocity = sprints.length > 0
+    ? sprints.reduce((sum: number, s: any) => sum + (s.velocity || 0), 0) / sprints.length
+    : 0;
+
+  return Response.json({
+    sprints: sprints.map((s: any) => ({
+      sprintId: s.sprint_id,
+      velocity: s.velocity ? `${s.velocity.toFixed(1)}%` : null,
+      capacity: s.capacity_points,
+      completed: s.completed_points,
+    })),
+    averageVelocity: `${avgVelocity.toFixed(1)}%`,
+    sprintCount: sprints.length,
+  });
+}
+
 // --- HTTP Server ---
 
 Bun.serve({
@@ -223,6 +395,16 @@ Bun.serve({
       if (url.pathname.match(/^\/workflow\/[^/]+\/task\/[^/]+$/) && req.method === "PATCH") {
         return updateTaskState(req);
       }
+
+      // Sprint planning routes
+      if (url.pathname === "/sprints" && req.method === "POST") return createSprint(req);
+      if (url.pathname === "/sprints" && req.method === "GET") return listSprints(req);
+      if (url.pathname === "/sprints/velocity" && req.method === "GET") return getVelocity(req);
+      if (url.pathname.match(/^\/sprints\/[^/]+$/) && req.method === "GET") return getSprint(req);
+      if (url.pathname.match(/^\/sprints\/[^/]+\/start$/) && req.method === "POST") return startSprint(req);
+      if (url.pathname.match(/^\/sprints\/[^/]+\/complete$/) && req.method === "POST") return completeSprint(req);
+      if (url.pathname.match(/^\/sprints\/[^/]+\/items$/) && req.method === "POST") return addSprintItem(req);
+      if (url.pathname.match(/^\/sprints\/[^/]+\/items\/[^/]+$/) && req.method === "PATCH") return updateSprintItem(req);
 
       return new Response("Not found", { status: 404 });
     } catch (err) {
