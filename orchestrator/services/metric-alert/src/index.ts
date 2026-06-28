@@ -12,6 +12,9 @@ import {
   IntentType,
   MetricAlertPayload,
   ScopeChangeRequestPayload,
+  MetricWarningPayload,
+  MetricCriticalPayload,
+  RollbackTriggeredPayload,
 } from "@orchestrator/contracts";
 
 const PORT = Number(process.env.PORT) || 3112;
@@ -185,20 +188,38 @@ function evaluateMetric(featureSlug: string, metricName: string, currentValue: n
   alertHistory.push(alert);
   emitIntent("MetricAlert", alert);
 
-  // Trigger concrete action for critical alerts
-  if (threshold === "critical") {
-    const scopeChange: ScopeChangeRequestPayload = {
-      workflowId: `wf-${featureSlug}`,
-      requestedBy: "metric-alert",
-      changeType: "modify_acceptance",
-      details: {
-        metricName,
-        currentValue,
-        target,
-        reason: `Critical metric breach: ${metricName} at ${currentValue}, target ${target}`,
-      },
+  if (threshold === "warning") {
+    const warningPayload: MetricWarningPayload = {
+      featureSlug,
+      metricName,
+      currentValue: `${currentValue}${unit === "percent" ? "%" : ""}`,
+      targetValue: target,
+      severity: "warning",
     };
-    emitIntent("ScopeChangeRequest", scopeChange);
+    emitIntent("MetricWarning", warningPayload);
+  }
+
+  if (threshold === "critical") {
+    const criticalPayload: MetricCriticalPayload = {
+      featureSlug,
+      metricName,
+      currentValue: `${currentValue}${unit === "percent" ? "%" : ""}`,
+      targetValue: target,
+      severity: "critical",
+      autoAction: "rollback_triggered",
+    };
+    emitIntent("MetricCritical", criticalPayload);
+
+    // Auto-rollback on critical
+    const rollbackPayload: RollbackTriggeredPayload = {
+      featureSlug,
+      reason: `Critical metric breach: ${metricName}=${currentValue}, target ${target}`,
+      metricName,
+      currentValue: `${currentValue}${unit === "percent" ? "%" : ""}`,
+      targetValue: target,
+      autoRollback: true,
+    };
+    emitIntent("RollbackTriggered", rollbackPayload);
   }
 
   return alert;

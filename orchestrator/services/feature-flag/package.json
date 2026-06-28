@@ -1,0 +1,18 @@
+{
+  "name": "@orchestrator/feature-flag",
+  "version": "0.1.0",
+  "description": "Feature flag service — percentage gates, cohort gates, kill switches for rollout control",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@orchestrator/bus-client": "workspace:*",
+    "@orchestrator/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

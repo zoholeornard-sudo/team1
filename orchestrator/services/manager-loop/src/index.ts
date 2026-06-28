@@ -12,6 +12,9 @@ import {
   ManagerHeartbeatPayload,
   ReassignTaskPayload,
   ScopeChangeRequestPayload,
+  MetricWarningPayload,
+  MetricCriticalPayload,
+  RollbackTriggeredPayload,
 } from "@orchestrator/contracts";
 
 const PORT = Number(process.env.PORT) || 3109;
@@ -164,9 +167,37 @@ async function getManagers(req: Request): Promise<Response> {
   return Response.json({ managers: managerList, count: managerList.length });
 }
 
+// --- Bus subscriptions for metric alerts and rollbacks ---
+
+async function startBus() {
+  await bus.connect();
+  console.log(`[${SERVICE_NAME}] Connected to Redis`);
+
+  await Promise.all([
+    bus.subscribe("intents:metric-warning", SERVICE_NAME, `${SERVICE_NAME}-warn`, async (envelope) => {
+      const payload = envelope.payload as MetricWarningPayload;
+      console.log(`[${SERVICE_NAME}] Metric warning: ${payload.metricName}=${payload.currentValue} (target: ${payload.targetValue}) for ${payload.featureSlug}`);
+      // Increase monitoring frequency — log for now
+    }),
+    bus.subscribe("intents:metric-critical", SERVICE_NAME, `${SERVICE_NAME}-crit`, async (envelope) => {
+      const payload = envelope.payload as MetricCriticalPayload;
+      console.log(`[${SERVICE_NAME}] Metric CRITICAL: ${payload.metricName}=${payload.currentValue} (target: ${payload.targetValue}) for ${payload.featureSlug}`);
+      console.log(`[${SERVICE_NAME}] Auto-action: ${payload.autoAction}`);
+    }),
+    bus.subscribe("intents:rollback-triggered", SERVICE_NAME, `${SERVICE_NAME}-rollback`, async (envelope) => {
+      const payload = envelope.payload as RollbackTriggeredPayload;
+      console.log(`[${SERVICE_NAME}] Rollback triggered for ${payload.featureSlug}: ${payload.reason}`);
+      console.log(`[${SERVICE_NAME}] Auto-rollback: ${payload.autoRollback}`);
+    }),
+  ]);
+}
+
 // Start coordination loop
 setInterval(runManagerLoop, HEARTBEAT_INTERVAL_MS);
 console.log(`[${SERVICE_NAME}] Manager loop running every ${HEARTBEAT_INTERVAL_MS}ms`);
+
+// Start bus in background
+startBus().catch(console.error);
 
 Bun.serve({
   port: PORT,

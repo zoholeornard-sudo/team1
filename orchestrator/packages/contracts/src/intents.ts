@@ -52,7 +52,21 @@ export type IntentType =
   | "ConflictDetected"
   | "BackupAgentSpawned"
   // Metric alerts (P5 — refinement plan)
-  | "MetricAlert";
+  | "MetricAlert"
+  // Feature rollout playbook intents
+  | "SpecCommitted"
+  | "ScanCompleted"
+  | "InfraProvisioned"
+  | "DeployCompleted"
+  | "ModelsIntegrated"
+  | "AnalyticsLive"
+  | "MonitoringActive"
+  | "RollbackTriggered"
+  | "RollbackWarning"
+  | "MetricWarning"
+  | "MetricCritical"
+  | "FeatureFlagUpdated"
+  | "WorkflowStepCompleted";
 
 export type EditOp = "create" | "update" | "delete" | "progress";
 
@@ -226,6 +240,94 @@ export interface PhaseEscalationPayload {
   managerOptions: ("accept_planned_gap" | "extend_deadline" | "kill_feature")[];
 }
 
+// --- Feature rollout playbook ---
+
+export interface SpecCommittedPayload {
+  featureSlug: string;
+  specPath: string;
+  requestingManager: string;
+}
+
+export interface ScanCompletedPayload {
+  featureSlug: string;
+  criticalVulns: number;
+  passed: boolean;
+}
+
+export interface InfraProvisionedPayload {
+  featureSlug: string;
+  resources: string[];
+  provisioningTimeMs: number;
+}
+
+export interface DeployCompletedPayload {
+  featureSlug: string;
+  commitSha: string;
+  rolloutMode: "full" | "phased" | "dark" | "beta";
+  trafficPercentage: number;
+}
+
+export interface ModelsIntegratedPayload {
+  featureSlug: string;
+  models: string[];
+}
+
+export interface AnalyticsLivePayload {
+  featureSlug: string;
+  events: string[];
+}
+
+export interface MonitoringActivePayload {
+  featureSlug: string;
+  services: string[];
+}
+
+export interface RollbackTriggeredPayload {
+  featureSlug: string;
+  reason: string;
+  metricName: string;
+  currentValue: string;
+  targetValue: string;
+  autoRollback: boolean;
+}
+
+export interface RollbackWarningPayload {
+  featureSlug: string;
+  reason: string;
+  recommendedAction: string;
+}
+
+export interface MetricWarningPayload {
+  featureSlug: string;
+  metricName: string;
+  currentValue: string;
+  targetValue: string;
+  severity: "warning";
+}
+
+export interface MetricCriticalPayload {
+  featureSlug: string;
+  metricName: string;
+  currentValue: string;
+  targetValue: string;
+  severity: "critical";
+  autoAction: string;
+}
+
+export interface FeatureFlagUpdatedPayload {
+  featureSlug: string;
+  flagName: string;
+  flagType: "percentage" | "cohort" | "kill_switch";
+  value: string | number | boolean;
+}
+
+export interface WorkflowStepCompletedPayload {
+  featureSlug: string;
+  stepNumber: number;
+  stepName: string;
+  output: string;
+}
+
 // --- Bus hygiene ---
 
 export interface DeadLetterPayload {
@@ -366,3 +468,16 @@ export type ReviewReport = IntentEnvelope<"ReviewReport", ReviewReportPayload>;
 export type ConflictDetected = IntentEnvelope<"ConflictDetected", ConflictDetectedPayload>;
 export type BackupAgentSpawned = IntentEnvelope<"BackupAgentSpawned", BackupAgentSpawnedPayload>;
 export type MetricAlert = IntentEnvelope<"MetricAlert", MetricAlertPayload>;
+export type SpecCommitted = IntentEnvelope<"SpecCommitted", SpecCommittedPayload>;
+export type ScanCompleted = IntentEnvelope<"ScanCompleted", ScanCompletedPayload>;
+export type InfraProvisioned = IntentEnvelope<"InfraProvisioned", InfraProvisionedPayload>;
+export type DeployCompleted = IntentEnvelope<"DeployCompleted", DeployCompletedPayload>;
+export type ModelsIntegrated = IntentEnvelope<"ModelsIntegrated", ModelsIntegratedPayload>;
+export type AnalyticsLive = IntentEnvelope<"AnalyticsLive", AnalyticsLivePayload>;
+export type MonitoringActive = IntentEnvelope<"MonitoringActive", MonitoringActivePayload>;
+export type RollbackTriggered = IntentEnvelope<"RollbackTriggered", RollbackTriggeredPayload>;
+export type RollbackWarning = IntentEnvelope<"RollbackWarning", RollbackWarningPayload>;
+export type MetricWarning = IntentEnvelope<"MetricWarning", MetricWarningPayload>;
+export type MetricCritical = IntentEnvelope<"MetricCritical", MetricCriticalPayload>;
+export type FeatureFlagUpdated = IntentEnvelope<"FeatureFlagUpdated", FeatureFlagUpdatedPayload>;
+export type WorkflowStepCompleted = IntentEnvelope<"WorkflowStepCompleted", WorkflowStepCompletedPayload>;

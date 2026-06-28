@@ -89,6 +89,7 @@ const SERVICES: ServiceDef[] = [
   { name: "review-scheduler", portOffset: 10, path: "services/review-scheduler/src/index.ts" },
   { name: "conflict-detector", portOffset: 11, path: "services/conflict-detector/src/index.ts" },
   { name: "metric-alert", portOffset: 12, path: "services/metric-alert/src/index.ts" },
+  { name: "feature-flag", portOffset: 13, path: "services/feature-flag/src/index.ts" },
 ];
 
 // --- Port allocation ---
