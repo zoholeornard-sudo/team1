@@ -1,13 +1,17 @@
 /**
  * @orchestrator/bus-client — shared Redis Streams transport
  *
+ * Uses ioredis (not the `redis` npm package) for Bun compatibility.
+ * The `redis` package's RESP2 encoder crashes with Bun's stream types.
+ *
  * Provides:
  * - BusClient: publish/subscribe with idempotency dedupe (24h TTL)
  * - IntentEnvelope validation via the shared contracts catalog
  * - Dead-letter routing after 3 retries
  * - Stream replay-on-boot via last-acked offset tracking
+ * - Redis SELECT db for multi-instance isolation
  */
-import { createClient, RedisClientType } from "redis";
+import Redis from "ioredis";
 import { IntentType, IntentEnvelope } from "@orchestrator/contracts";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
@@ -18,43 +22,47 @@ export interface BusConfig {
   url?: string;
   dedupTtl?: number;
   maxRetries?: number;
-  redisDb?: number; // Redis SELECT db (0-15) for multi-instance isolation
+  redisDb?: number;
 }
 
 export class BusClient {
-  private redis: RedisClientType;
+  private redis: Redis;
   private config: Required<BusConfig>;
 
   constructor(config: BusConfig = {}) {
+    const url = config.url || REDIS_URL;
+    const db = config.redisDb ?? this.extractDbFromUrl(url);
     this.config = {
-      url: config.url || REDIS_URL,
+      url,
       dedupTtl: config.dedupTtl || DEDUP_TTL,
       maxRetries: config.maxRetries || MAX_RETRIES,
-      redisDb: config.redisDb ?? this.extractDbFromUrl(config.url || REDIS_URL),
+      redisDb: db,
     };
-    this.redis = createClient({ url: this.config.url });
+    this.redis = new Redis(url, {
+      db,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+    });
   }
 
   private extractDbFromUrl(url: string): number {
-    // redis://localhost:6379/3 → db=3
     const match = url.match(/\/(\d+)$/);
     return match ? parseInt(match[1]) : 0;
   }
 
+  /** Expose the underlying Redis client for advanced operations */
+  get redisClient(): Redis {
+    return this.redis;
+  }
+
   async connect(): Promise<void> {
-    if (!this.redis.isOpen) {
+    if (this.redis.status === "wait" || this.redis.status === "close") {
       await this.redis.connect();
-    }
-    // SELECT the instance-specific DB
-    if (this.config.redisDb > 0) {
-      await this.redis.select(this.config.redisDb);
     }
   }
 
   async disconnect(): Promise<void> {
-    if (this.redis.isOpen) {
-      await this.redis.quit();
-    }
+    await this.redis.quit();
   }
 
   /**
@@ -69,7 +77,7 @@ export class BusClient {
 
     // Idempotency guard
     const dedupKey = `idem:${stream}:${envelope.idempotencyKey}`;
-    const acquired = await this.redis.set(dedupKey, "1", { NX: true, EX: this.config.dedupTtl });
+    const acquired = await this.redis.set(dedupKey, "1", "NX", "EX", this.config.dedupTtl);
 
     if (!acquired) {
       console.warn(`[bus-client] Duplicate intent dropped: ${envelope.idempotencyKey} on ${stream}`);
@@ -77,10 +85,7 @@ export class BusClient {
     }
 
     // Publish to stream
-    await this.redis.xAdd(stream, "*", {
-      type: envelope.type,
-      envelope: JSON.stringify(envelope),
-    });
+    await this.redis.xadd(stream, "*", "type", envelope.type, "envelope", JSON.stringify(envelope));
 
     return true;
   }
@@ -99,7 +104,7 @@ export class BusClient {
 
     // Ensure consumer group exists
     try {
-      await this.redis.xGroupCreate(stream, group, "0", { MKSTREAM: true });
+      await this.redis.xgroup("CREATE", stream, group, "0", "MKSTREAM");
     } catch (e: any) {
       if (!e.message.includes("BUSYGROUP")) throw e;
     }
@@ -108,35 +113,32 @@ export class BusClient {
 
     while (true) {
       try {
-        const streams = await this.redis.xReadGroup(
-          group,
-          consumer,
-          [{ key: stream, id: ">" }],
-          { COUNT: 1, BLOCK: 2000 }
+        const results = await this.redis.xreadgroup(
+          "GROUP", group, consumer,
+          "COUNT", 1,
+          "BLOCK", 2000,
+          "STREAMS", stream, ">"
         );
 
-        if (!streams) continue;
+        if (!results) continue;
 
-        for (const streamEntry of streams) {
-          if (!streamEntry.messages) continue;
-
-          for (const message of streamEntry.messages) {
-            if (!message.message?.envelope) continue;
-
-            const envelope = JSON.parse(message.message.envelope) as IntentEnvelope<T, any>;
+        for (const [streamKey, messages] of results) {
+          if (!messages) continue;
+          for (const [id, fields] of messages) {
+            if (!fields || !fields[1]) continue;
+            const envelope = JSON.parse(fields[1]) as IntentEnvelope<T, any>;
 
             try {
               await handler(envelope);
-              await this.redis.xAck(streamEntry.key, group, message.id);
+              await this.redis.xack(streamKey, group, id);
             } catch (err) {
-              console.error(`[bus-client] Handler failed for ${message.id}:`, err);
-              await this.handleFailure(streamEntry.key, message, group, stream);
+              console.error(`[bus-client] Handler failed for ${id}:`, err);
+              await this.handleFailure(streamKey, id, fields, group, stream);
             }
           }
         }
       } catch (err) {
         console.error(`[bus-client] Read error:`, err);
-        // Brief backoff before retry
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
@@ -155,7 +157,7 @@ export class BusClient {
     await this.connect();
 
     try {
-      await this.redis.xGroupCreate(stream, group, "0", { MKSTREAM: true });
+      await this.redis.xgroup("CREATE", stream, group, "0", "MKSTREAM");
     } catch (e: any) {
       if (!e.message.includes("BUSYGROUP")) throw e;
     }
@@ -164,29 +166,27 @@ export class BusClient {
 
     while (true) {
       try {
-        const streams = await this.redis.xReadGroup(
-          group,
-          consumer,
-          [{ key: stream, id: ">" }],
-          { COUNT: 10, BLOCK: 1000 }
+        const results = await this.redis.xreadgroup(
+          "GROUP", group, consumer,
+          "COUNT", 10,
+          "BLOCK", 1000,
+          "STREAMS", stream, ">"
         );
 
-        if (!streams) continue;
+        if (!results) continue;
 
-        for (const streamEntry of streams) {
-          if (!streamEntry.messages) continue;
-
-          for (const message of streamEntry.messages) {
-            if (!message.message?.envelope) continue;
-
-            const envelope = JSON.parse(message.message.envelope) as IntentEnvelope<T, any>;
+        for (const [streamKey, messages] of results) {
+          if (!messages) continue;
+          for (const [id, fields] of messages) {
+            if (!fields || !fields[1]) continue;
+            const envelope = JSON.parse(fields[1]) as IntentEnvelope<T, any>;
 
             try {
               await handler(envelope);
-              await this.redis.xAck(streamEntry.key, group, message.id);
+              await this.redis.xack(streamKey, group, id);
             } catch (err) {
-              console.error(`[bus-client] Handler failed for ${message.id}:`, err);
-              await this.handleFailure(streamEntry.key, message, group, stream);
+              console.error(`[bus-client] Handler failed for ${id}:`, err);
+              await this.handleFailure(streamKey, id, fields, group, stream);
             }
           }
         }
@@ -199,25 +199,25 @@ export class BusClient {
 
   private async handleFailure(
     streamKey: string,
-    message: any,
+    messageId: string,
+    fields: string[],
     group: string,
     originalStream: string
   ): Promise<void> {
-    const retryKey = `retry:${group}:${message.id}`;
+    const retryKey = `retry:${group}:${messageId}`;
     const retries = await this.redis.incr(retryKey);
     await this.redis.expire(retryKey, 3600);
 
     if (retries > this.config.maxRetries) {
-      // Move to dead-letter stream
-      await this.redis.xAdd("intents:dead-letter", "*", {
-        originalStream,
-        messageId: message.id,
-        payload: message.message.envelope,
-        reason: "Max retries exceeded",
-      });
-      await this.redis.xAck(streamKey, group, message.id);
+      await this.redis.xadd("intents:dead-letter", "*",
+        "originalStream", originalStream,
+        "messageId", messageId,
+        "payload", fields[1] || "",
+        "reason", "Max retries exceeded"
+      );
+      await this.redis.xack(streamKey, group, messageId);
       await this.redis.del(retryKey);
-      console.error(`[bus-client] Message ${message.id} moved to dead-letter stream`);
+      console.error(`[bus-client] Message ${messageId} moved to dead-letter stream`);
     }
   }
 
@@ -227,9 +227,13 @@ export class BusClient {
   async getLastAckedId(stream: string, group: string): Promise<string | null> {
     await this.connect();
     try {
-      const info = await this.redis.xInfoGroups(stream);
-      const groupInfo = info.find((g: any) => g.name === group);
-      return groupInfo?.lastDeliveredId || null;
+      const info = await this.redis.xinfo("GROUPS", stream);
+      for (const groupInfo of info) {
+        if (groupInfo[1] === group) {
+          return groupInfo[3] || null;
+        }
+      }
+      return null;
     } catch {
       return null;
     }

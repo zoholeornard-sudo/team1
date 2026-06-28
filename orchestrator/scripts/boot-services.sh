@@ -30,6 +30,7 @@ declare -A SERVICES=(
   [review-scheduler]="services/review-scheduler/src/index.ts"
   [conflict-detector]="services/conflict-detector/src/index.ts"
   [metric-alert]="services/metric-alert/src/index.ts"
+  [instance-manager]="services/instance-manager/src/index.ts"
 )
 
 for name in "${!SERVICES[@]}"; do
@@ -46,7 +47,7 @@ sleep 8
 
 echo "[boot] health sweep (with retries):"
 FAIL=0
-for port in 3099 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112; do
+for port in 3098 3099 3100 3101 3102 3103 3104 3105 3106 3107 3108 3109 3110 3111 3112; do
   resp=""
   for attempt in 1 2 3; do
     resp=$(curl -s --max-time 2 "http://localhost:$port/health" 2>/dev/null || true)
