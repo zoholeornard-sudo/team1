@@ -1,7 +1,7 @@
 [
   {
-    "snapshotVersion": "v1.2",
-    "timestamp": "2026-06-28T20:00:00Z",
+    "snapshotVersion": "v1.3",
+    "timestamp": "2026-06-28T20:30:00Z",
     "orchestrator": {
       "services": [
         {
@@ -160,7 +160,8 @@
         "M5": "not started",
         "M6": "not started"
       },
-      "integration_tests": "24/24 passing \u2014 full lifecycle: feature submit, spawn, task create/complete, edit apply, phase gate, health checks"
+      "integration_tests": "24/24 passing \u2014 full lifecycle: feature submit, spawn, task create/complete, edit apply, phase gate, health checks",
+      "multi_instance_tests": "12/12 passing \u2014 5 concurrent instances, unique branches, independent tasks, phase gates, heartbeats"
     }
   }
 ]
