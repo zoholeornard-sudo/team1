@@ -1,0 +1,72 @@
+# team1 Orchestrator Configuration
+# Override with environment variables: ORCHESTRATOR_HEARTBEAT_INTERVAL_MS=15000
+
+orchestrator:
+  # Service mesh
+  heartbeat_interval_ms: 30000
+  stall_threshold_ms: 90000
+  max_backtracks: 3
+  lock_ttl_ms: 5000
+  dedup_ttl_seconds: 86400
+  health_check_timeout_ms: 500
+  log_level: info
+
+  # Port assignments
+  ports:
+    orchestrator_api: 3099
+    instance_manager: 3098
+    base_port: 3100
+    port_stride: 100
+
+  # Redis
+  redis:
+    url: redis://localhost:6379
+    max_retries: 3
+
+  # Git
+  git:
+    repo_root: /workspaces/team1
+    auto_push: true
+    branch_prefix: feature/
+
+  # Supervisor
+  supervisor:
+    enabled: true
+    interval_seconds: 30
+    max_restarts: 5
+    restart_window_seconds: 300
+
+  # Lifecycle phases (1-7)
+  lifecycle:
+    phases:
+      - number: 1
+        name: Planning & Requirements
+        leads: [product-manager-agent]
+        supports: [architect-agent]
+      - number: 2
+        name: Architecture & Design
+        leads: [architect-agent]
+        supports: [fullstack-dev, devops-agent]
+      - number: 3
+        name: Implementation & Build
+        leads: [fullstack-dev]
+        supports: [uiux-agent, devops-agent]
+      - number: 4
+        name: Testing & QA
+        leads: [qa-agent]
+        supports: [fullstack-dev]
+      - number: 5
+        name: Deployment & Release
+        leads: [devops-agent]
+        supports: [architect-agent]
+      - number: 6
+        name: Monitoring & Incident Response
+        leads: [devops-agent]
+        supports: [qa-agent, architect-agent]
+      - number: 7
+        name: Analysis & Feedback
+        leads: [product-manager-agent]
+        supports: "*"
+    # Phase 7 does not backtrack
+    terminal_phase: 7
+    max_backtracks: 3

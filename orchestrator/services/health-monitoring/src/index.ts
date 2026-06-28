@@ -2,160 +2,175 @@
  * health-monitoring — bounded context service (ADR-0001)
  * Port: :3103
  *
+ * R5: Observability & Production Hardening
+ * - SQLite-backed heartbeat store (survives restarts)
+ * - Automatic stall detection (configurable threshold)
+ * - Emits InstanceStalled intent when agent misses 3+ heartbeats
+ * - Structured JSON logging for Loki compatibility
+ * - Health history API for dashboards
+ *
  * Subscribes to:
  * - intents:heartbeat → tracks agent liveness
  *
  * Publishes:
  * - intents:instance-stalled → when heartbeat exceeds threshold
- *
- * Monitors agent health and emits stall alerts.
  */
 import { createBusClient } from "@orchestrator/bus-client";
 import { HeartbeatPayload, InstanceStalledPayload } from "@orchestrator/contracts";
+import { Database } from "bun:sqlite";
 
 const PORT = Number(process.env.PORT) || 3103;
 const SERVICE_NAME = "health-monitoring";
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
-
-// Configurable thresholds
-const STALL_THRESHOLD_MS = Number(process.env.STALL_THRESHOLD_MS) || 90000; // 3 missed beats at 30s
+const DB_PATH = process.env.HEALTH_DB_PATH || "data/health.db";
+const STALL_THRESHOLD_MS = Number(process.env.STALL_THRESHOLD_MS) || 90000;
+const CHECK_INTERVAL_MS = Number(process.env.HEALTH_CHECK_INTERVAL_MS) || 30000;
 
 console.log(`[${SERVICE_NAME}] booting on :${PORT}`);
 
 const bus = createBusClient({ url: REDIS_URL });
 
-// In-memory heartbeat store
-interface HeartbeatRecord {
-  instanceId: string;
-  lastHeartbeatAt: string;
-  turnId: string;
-  load: {
-    activeTurns: number;
-    pendingIntents: number;
-    lastHeartbeatAgeMs: number;
-  };
-  missedBeats: number;
+// --- SQLite persistence ---
+const db = new Database(DB_PATH, { create: true });
+db.run("PRAGMA journal_mode = WAL");
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS heartbeats (
+    instance_id TEXT PRIMARY KEY,
+    feature_slug TEXT,
+    last_heartbeat_at TEXT NOT NULL,
+    turn_id TEXT,
+    active_turns INTEGER DEFAULT 0,
+    pending_intents INTEGER DEFAULT 0,
+    missed_beats INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )
+`);
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS stall_events (
+    id TEXT PRIMARY KEY,
+    instance_id TEXT NOT NULL,
+    feature_slug TEXT,
+    last_heartbeat_at TEXT,
+    missed_beats INTEGER,
+    detected_at TEXT NOT NULL
+  )
+`);
+
+// --- Structured logging ---
+function log(level: string, msg: string, extra: Record<string, unknown> = {}) {
+  const entry = { ts: new Date().toISOString(), level, service: SERVICE_NAME, msg, ...extra };
+  console.log(JSON.stringify(entry));
 }
 
-const heartbeats: Map<string, HeartbeatRecord> = new Map();
-
-// --- Intent handlers ---
-
+// --- Intent handler ---
 async function handleHeartbeat(payload: HeartbeatPayload) {
   const now = new Date().toISOString();
+  const existing = db.query("SELECT * FROM heartbeats WHERE instance_id = ?").get(payload.instanceId) as any;
 
-  heartbeats.set(payload.instanceId, {
-    instanceId: payload.instanceId,
-    lastHeartbeatAt: now,
-    turnId: payload.turnId,
-    load: payload.load,
-    missedBeats: 0, // Reset on successful heartbeat
-  });
-
-  console.log(`[${SERVICE_NAME}] Heartbeat from ${payload.instanceId} (turn: ${payload.turnId})`);
+  if (existing) {
+    db.run(`
+      UPDATE heartbeats SET
+        last_heartbeat_at = ?, turn_id = ?, active_turns = ?, pending_intents = ?,
+        missed_beats = 0, updated_at = ?
+      WHERE instance_id = ?
+    `, [now, payload.turnId, payload.load.activeTurns, payload.load.pendingIntents, now, payload.instanceId]);
+  } else {
+    db.run(`
+      INSERT INTO heartbeats (instance_id, last_heartbeat_at, turn_id, active_turns, pending_intents, missed_beats, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+    `, [payload.instanceId, now, payload.turnId, payload.load.activeTurns, payload.load.pendingIntents, now, now]);
+  }
 }
 
 // --- Stall detection loop ---
-
-function checkForStalls() {
+async function checkForStalls() {
   const now = Date.now();
+  const rows = db.query("SELECT * FROM heartbeats").all() as any[];
 
-  for (const [instanceId, record] of heartbeats) {
-    const lastBeat = new Date(record.lastHeartbeatAt).getTime();
+  for (const row of rows) {
+    const lastBeat = new Date(row.last_heartbeat_at).getTime();
     const age = now - lastBeat;
 
     if (age > STALL_THRESHOLD_MS) {
-      const missedBeats = Math.floor(age / 30000); // Assuming 30s interval
-      record.missedBeats = missedBeats;
+      const missedBeats = Math.floor(age / (STALL_THRESHOLD_MS / 3));
 
-      console.log(`[${SERVICE_NAME}] Agent ${instanceId} STALLED (missed ${missedBeats} beats, age: ${age}ms)`);
+      // Update missed beats
+      db.run("UPDATE heartbeats SET missed_beats = ? WHERE instance_id = ?", [missedBeats, row.instance_id]);
 
-      // Publish stall intent
+      // Emit stall intent
       const stallPayload: InstanceStalledPayload = {
-        instanceId,
-        lastHeartbeatAt: record.lastHeartbeatAt,
+        instanceId: row.instance_id,
+        lastHeartbeatAt: row.last_heartbeat_at,
         missedBeats,
       };
 
-      bus.publish("intents:instance-stalled", {
+      await bus.publish("intents:instance-stalled", {
         type: "InstanceStalled",
-        idempotencyKey: `stall-${instanceId}-${Date.now()}`,
-        featureSlug: "unknown",
-        instanceId,
-        branch: "main",
+        idempotencyKey: `stall-${row.instance_id}-${Date.now()}`,
+        featureSlug: row.feature_slug || "unknown",
+        instanceId: row.instance_id,
         timestamp: new Date().toISOString(),
         payload: stallPayload,
       });
+
+      // Record stall event
+      db.run(`
+        INSERT INTO stall_events (id, instance_id, feature_slug, last_heartbeat_at, missed_beats, detected_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [`stall-${row.instance_id}-${Date.now()}`, row.instance_id, row.feature_slug, row.last_heartbeat_at, missedBeats, new Date().toISOString()]);
+
+      log("warn", "Instance stalled", { instanceId: row.instance_id, missedBeats, ageMs: age });
     }
   }
 }
 
-// Start stall detection loop (every 30s)
-setInterval(checkForStalls, 30000);
+// Start stall detection loop
+setInterval(checkForStalls, CHECK_INTERVAL_MS);
+log("info", "Stall detection loop started", { intervalMs: CHECK_INTERVAL_MS, thresholdMs: STALL_THRESHOLD_MS });
 
 // --- Start bus subscription ---
-
 async function startBus() {
   await bus.connect();
-  console.log(`[${SERVICE_NAME}] Connected to Redis`);
-
+  log("info", "Connected to Redis");
   await bus.subscribe("intents:heartbeat", SERVICE_NAME, `${SERVICE_NAME}-1`, async (envelope) => {
     await handleHeartbeat(envelope.payload as HeartbeatPayload);
   });
 }
 
 // --- HTTP API ---
-
-async function getHeartbeats(req: Request): Promise<Response> {
-  const heartbeatList = Array.from(heartbeats.values());
-  return Response.json({ heartbeats: heartbeatList, count: heartbeatList.length });
-}
-
-async function getStalled(req: Request): Promise<Response> {
-  const now = Date.now();
-  const stalled = Array.from(heartbeats.values()).filter(h => {
-    const age = now - new Date(h.lastHeartbeatAt).getTime();
-    return age > STALL_THRESHOLD_MS;
-  });
-  return Response.json({ stalled, count: stalled.length, thresholdMs: STALL_THRESHOLD_MS });
-}
-
-// Start HTTP server first so /health responds before the blocking subscribe loop starts.
 Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
-
     try {
       if (url.pathname === "/health") {
         const redisOk = await bus.ping();
+        const hbCount = (db.query("SELECT COUNT(*) as cnt FROM heartbeats").get() as any)?.cnt || 0;
+        const stallCount = (db.query("SELECT COUNT(*) as cnt FROM stall_events").get() as any)?.cnt || 0;
         return Response.json({
-          service: SERVICE_NAME,
-          status: redisOk ? "ok" : "degraded",
-          port: PORT,
-          agentsTracked: heartbeats.size,
-          stallThresholdMs: STALL_THRESHOLD_MS,
-          redis: redisOk ? "connected" : "disconnected",
+          service: SERVICE_NAME, status: redisOk ? "ok" : "degraded", port: PORT,
+          heartbeatsTracked: hbCount, stallEvents: stallCount,
+          thresholdMs: STALL_THRESHOLD_MS, redis: redisOk ? "connected" : "disconnected",
         });
       }
-
       if (url.pathname === "/heartbeats" && req.method === "GET") {
-        return getHeartbeats(req);
+        const rows = db.query("SELECT * FROM heartbeats ORDER BY updated_at DESC").all();
+        return Response.json({ heartbeats: rows, count: rows.length });
       }
-
-      if (url.pathname === "/stalled" && req.method === "GET") {
-        return getStalled(req);
+      if (url.pathname === "/stalls" && req.method === "GET") {
+        const rows = db.query("SELECT * FROM stall_events ORDER BY detected_at DESC").all();
+        return Response.json({ stalls: rows, count: rows.length });
       }
-
       return new Response("Not found", { status: 404 });
     } catch (err) {
-      console.error(`[${SERVICE_NAME}] Error:`, err);
+      log("error", "Request failed", { error: String(err) });
       return new Response("Internal server error", { status: 500 });
     }
   },
 });
 
-console.log(`[${SERVICE_NAME}] listening on :${PORT}`);
-
-// Start bus subscriptions after the HTTP server is listening.
-startBus().catch(console.error);
+log("info", "listening", { port: PORT });
+startBus().catch((err) => log("error", "Bus subscription failed", { error: String(err) }));
