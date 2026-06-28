@@ -9,8 +9,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@orchestrator/contracts": "workspace:*",
-    "duckdb": "^1.1.0"
+    "@orchestrator/bus-client": "workspace:*",
+    "@orchestrator/contracts": "workspace:*"
   },
   "devDependencies": {
     "bun-types": "latest"

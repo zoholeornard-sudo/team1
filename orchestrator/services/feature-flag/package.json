@@ -1,7 +1,7 @@
 {
-  "name": "@orchestrator/bus-client",
+  "name": "@orchestrator/feature-flag",
   "version": "0.1.0",
-  "description": "Shared Redis Streams bus client for all orchestrator services",
+  "description": "Feature flag service — percentage gates, cohort gates, kill switches for rollout control",
   "main": "src/index.ts",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
@@ -9,7 +9,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "ioredis": "^5.4.1"
+    "@orchestrator/bus-client": "workspace:*",
+    "@orchestrator/contracts": "workspace:*"
   },
   "devDependencies": {
     "bun-types": "latest"

@@ -89,6 +89,7 @@ const SERVICES: ServiceDef[] = [
   { name: "review-scheduler", portOffset: 10, path: "services/review-scheduler/src/index.ts" },
   { name: "conflict-detector", portOffset: 11, path: "services/conflict-detector/src/index.ts" },
   { name: "metric-alert", portOffset: 12, path: "services/metric-alert/src/index.ts" },
+  { name: "feature-flag", portOffset: 13, path: "services/feature-flag/src/index.ts" },
 ];
 
 // --- Port allocation ---
@@ -283,20 +284,27 @@ async function getHealth(req: Request): Promise<Response> {
   const row = db.query("SELECT * FROM instances WHERE id = ?").get(id) as any;
   if (!row) return new Response("Instance not found", { status: 404 });
 
-  // Check each service health
+  // Check all service health in parallel (500ms timeout each)
+  const healthPromises = SERVICES.map(async (svc) => {
+    const port = row.base_port + svc.portOffset;
+    try {
+      const resp = await fetch(`http://localhost:${port}/health`, {
+        signal: AbortSignal.timeout(500),
+      });
+      const data = await resp.json();
+      return [svc.name, { status: "ok", ...data }] as const;
+    } catch {
+      return [svc.name, { status: "unreachable" }] as const;
+    }
+  });
+
+  const results = await Promise.all(healthPromises);
   const health: Record<string, any> = {};
   let allHealthy = true;
 
-  for (const svc of SERVICES) {
-    const port = row.base_port + svc.portOffset;
-    try {
-      const resp = await fetch(`http://localhost:${port}/health`, { signal: AbortSignal.timeout(2000) });
-      const data = await resp.json();
-      health[svc.name] = { status: "ok", ...data };
-    } catch {
-      health[svc.name] = { status: "unreachable" };
-      allHealthy = false;
-    }
+  for (const [name, status] of results) {
+    health[name] = status;
+    if (status.status !== "ok") allHealthy = false;
   }
 
   return Response.json({ instanceId: id, allHealthy, services: health });
